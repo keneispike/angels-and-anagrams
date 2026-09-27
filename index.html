@@ -156,23 +156,34 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
   .scores .plaque .tot{font-size:12px}
   .scores .plaque .sub{font-size:8px;gap:3px}
   .halos i{width:4px;height:4px}
-  .quickrow{justify-content:center;gap:3px}
-  .quickrow .btn{padding:2px 6px;font-size:9px}
-  .backicon{width:12px;height:16px}
+  .quickrow{justify-content:center;gap:7px;align-items:center}
+  .backbtn{padding:3px 12px 3px 3px;border-radius:13px;gap:6px;font-size:11px}
+  .backicon{width:26px;height:35px;border-radius:4px}
+  #openInfo{padding:2px 7px;font-size:8px}
   .tray{padding:3px 5px;gap:3px}
   .traylabel{font-size:9px}
   .statusbar{padding:2px 6px;font-size:10px;min-height:16px;gap:5px}
   .boardwrap{padding:3px}
 }
-.btn{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:14px}
-.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:14px;transition:transform .12s ease,box-shadow .12s ease,filter .12s ease}
+.btn:hover:not(:disabled){border-color:var(--muted);filter:brightness(1.04)}
+.btn:active:not(:disabled){transform:scale(.96)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.primary{background:linear-gradient(180deg,#2A3050,var(--ink));color:var(--surface);border-color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.25)}
 .btn.goldb{background:var(--gold-soft);border-color:var(--gold);color:var(--ink)}
 .btn.small{padding:5px 10px;font-size:13px}
-.backbtn{display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 4px}
-.backicon{width:22px;height:30px;border-radius:3px;object-fit:cover;border:1px solid var(--tile-edge);display:block;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.backbtn{display:inline-flex;align-items:center;gap:9px;padding:6px 16px 6px 6px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.14);font-size:14px}
+.backicon{width:36px;height:48px;border-radius:5px;object-fit:cover;border:1px solid var(--tile-edge);display:block;box-shadow:0 2px 5px rgba(0,0,0,.3)}
+#openHand .backicon{box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--tile-edge),0 2px 5px rgba(0,0,0,.3)}
+#openGoals .backicon{box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--gold),0 2px 5px rgba(0,0,0,.3)}
 .flyoutHead .backicon{width:26px;height:36px;border-radius:4px}
+#openInfo{padding:3px 10px;font-size:10px;font-weight:600;border-radius:999px;opacity:.7;align-self:center}
+#openInfo:hover:not(:disabled){opacity:1}
+.actions .btn{border-radius:999px}
+#aRecall{background:var(--surface2)}
+#aShuffle{background:var(--nice-soft);border-color:var(--nice);color:var(--nice)}
+#aExch{background:var(--gold-soft);border-color:var(--gold);color:var(--ink)}
+#aPass{background:var(--evil-soft);border-color:var(--evil);color:var(--evil)}
 
 /* side */
 .side{display:flex;flex-direction:column;gap:12px;min-width:0}
