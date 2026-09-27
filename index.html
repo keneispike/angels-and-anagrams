@@ -258,8 +258,8 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
           <div class="statusbar" id="status"></div>
           <div class="actions" id="actions"></div>
           <div class="quickrow">
-            <button class="btn small backbtn" id="openHand"><img class="backicon" src="assets/splash.png" alt=""><span>Hand</span></button>
-            <button class="btn small backbtn" id="openGoals"><img class="backicon" src="assets/goals-back.jpg" alt=""><span>Goals</span></button>
+            <button class="btn small backbtn" id="openHand"><img class="backicon" src="assets/splash.png" alt=""><span id="handLbl">Hand</span></button>
+            <button class="btn small backbtn" id="openGoals"><img class="backicon" src="assets/goals-back.jpg" alt=""><span id="goalsLbl">Goals</span></button>
             <button class="btn small" id="openInfo">Claude &amp; log</button>
           </div>
         </div>
@@ -669,8 +669,8 @@ function render() {
   // goals
   $('#goals').innerHTML = p.goals.map(g => { const gs = AA.goalScore(st, p, g); return `<div class="goal"><span class="gn">${esc(AA.GOAL[g].name)}<span class="pts">${gs.pts} now</span></span><span class="gt">${esc(AA.GOAL[g].text)}</span><span class="gp">${esc(gs.note)}</span></div>`; }).join('');
   if (p.known[AI]) $('#goals').insertAdjacentHTML('beforeend', `<div class="goal" style="background:var(--evil-soft)"><span class="gn">Claude’s goals (False Prophet)</span><span class="gt">${p.known[AI].map(g => esc(AA.GOAL[g].name)).join(' · ')}</span><span class="gp">As of when you looked.</span></div>`);
-  $('#openHand').textContent = `Hand (${p.cards.length})`;
-  $('#openGoals').textContent = `Goals (${p.goals.length})`;
+  $('#handLbl').textContent = `Hand (${p.cards.length})`;
+  $('#goalsLbl').textContent = `Goals (${p.goals.length})`;
   // ai hand backs
   $('#aiHand').innerHTML = ai.cards.map(id => `<span class="cardback ${AA.CARD[id].side}" title="${AA.CARD[id].side === 'N' ? 'Nice' : 'Evil'} card back">${AA.CARD[id].side === 'N' ? 'N' : 'E'}</span>`).join('') + `<span class="counts" style="margin-left:6px">${ai.cards.length} cards · ${ai.supply.length} colored tiles left · ${ai.rack.length} on rack</span>`;
   $('#aiNote').textContent = ({ casual: 'Casual', family: 'Family', expert: 'Expert' })[UI.aiLevel] + ' level';
