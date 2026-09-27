@@ -1,0 +1,875 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Angels and Anagrams</title>
+<div id="splash" class="splash" role="button" tabindex="0" aria-label="Click to continue">
+  <img src="assets/splash.png" alt="Angels and Anagrams">
+  <div class="splashTitle">Angels <span class="amp">&amp;</span> Anagrams</div>
+  <div class="splashHint">Click to continue</div>
+</div>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --ground:#E9ECF3; --surface:#FFFFFF; --surface2:#F4F5F9; --ink:#1B2034; --muted:#5A6180; --line:#D3D8E5;
+  --gold:#A87A0E; --gold-soft:#F4E6BF; --nice:#2C6688; --nice-soft:#DDEAF3; --evil:#7B2D3E; --evil-soft:#F2DEE3;
+  --board:#BFC6D8; --sq:#E4E8F0; --tw:#B4475B; --dw:#EAB4BE; --tl:#3E6CA3; --dl:#B0C9E6; --premtxt:#FFFFFF; --premtxt2:#3A2A30;
+  --tile:#F5EDD6; --tile-ink:#2A2418; --tile-edge:#CBBC94;
+  --p-red:#B3322B; --p-red-ink:#FFFFFF; --p-black:#24252C; --p-black-ink:#F2D98C; --p-white:#FCFCFE; --p-white-ink:#1B2034; --p-gold:#D5A52C; --p-gold-ink:#2A1E05;
+  --good:#2D7A4C; --bad:#B03A2E; --focus:#2C6688;
+  --display:"Marcellus", "Cormorant Garamond", Georgia, serif;
+  --body:"Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0E1120; --surface:#171B2E; --surface2:#1F2439; --ink:#E6E8F2; --muted:#9CA3BF; --line:#2E3452;
+    --gold:#E2B64C; --gold-soft:#3A301A; --nice:#86BCDD; --nice-soft:#1B3044; --evil:#E590A2; --evil-soft:#3A1D27;
+    --board:#232941; --sq:#2C3350; --tw:#A33E52; --dw:#6C3947; --tl:#335888; --dl:#2E4A6D; --premtxt:#FFFFFF; --premtxt2:#F3DDE2;
+    --tile:#EFE5C8; --tile-ink:#2A2418; --tile-edge:#B9A97F; --good:#6BC08E; --bad:#F08A7C; --focus:#86BCDD;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0E1120; --surface:#171B2E; --surface2:#1F2439; --ink:#E6E8F2; --muted:#9CA3BF; --line:#2E3452;
+  --gold:#E2B64C; --gold-soft:#3A301A; --nice:#86BCDD; --nice-soft:#1B3044; --evil:#E590A2; --evil-soft:#3A1D27;
+  --board:#232941; --sq:#2C3350; --tw:#A33E52; --dw:#6C3947; --tl:#335888; --dl:#2E4A6D; --premtxt:#FFFFFF; --premtxt2:#F3DDE2;
+  --tile:#EFE5C8; --tile-ink:#2A2418; --tile-edge:#B9A97F; --good:#6BC08E; --bad:#F08A7C; --focus:#86BCDD;
+}
+*{box-sizing:border-box}
+html,body{background:var(--ground)}
+body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;padding-inline:16px;padding-block:8px 16px}
+button{font:inherit;color:inherit}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-family:var(--display);font-weight:400;font-size:clamp(19px,3vw,26px);margin:0;letter-spacing:.01em}
+.brand h1 .amp{color:var(--gold)}
+.brand .motto{color:var(--muted);font-size:13px;font-style:italic}
+@media (max-width:400px){.brand .motto{display:none}body{padding-block:6px 10px}}
+nav.tabs{display:flex;gap:4px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px}
+nav.tabs button{border:0;background:transparent;padding:6px 14px;border-radius:999px;cursor:pointer;font-weight:600;font-size:13px;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.menuWrap{position:relative;flex:none}
+.hamburger{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:8px 12px;font-size:16px;line-height:1;cursor:pointer}
+.hamburger:hover{border-color:var(--muted)}
+nav.tabs.menu{position:absolute;right:0;top:calc(100% + 6px);flex-direction:column;border-radius:10px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.18);z-index:20;min-width:170px}
+nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12px}
+
+/* scoreboard */
+.scores{display:flex;flex-direction:column;gap:4px}
+.plaque{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 8px;display:grid;grid-template-columns:auto 1fr auto;gap:0 6px;align-items:center;position:relative}
+.plaque.active{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-soft)}
+.plaque .swatch{width:14px;height:14px;border-radius:3px;grid-row:span 2;border:1px solid var(--tile-edge)}
+.plaque .who{font-weight:800;font-size:11px;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.plaque .tot{font-family:var(--mono);font-size:16px;grid-row:span 2;font-variant-numeric:tabular-nums}
+.plaque .sub{font-size:10px;color:var(--muted);display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.halos{display:inline-flex;gap:2px;align-items:center}
+.halos i{width:6px;height:6px;border-radius:50%;border:1px solid var(--gold);display:inline-block}
+.halos i.used{background:var(--gold)}
+.chip{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--evil-soft);color:var(--evil)}
+.chip.nice{background:var(--nice-soft);color:var(--nice)}
+.chip.gold{background:var(--gold-soft);color:var(--gold)}
+
+/* layout */
+#game{display:flex;flex-direction:column;gap:6px}
+.table{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:10px;align-items:start}
+@media (max-width:700px){.table{grid-template-columns:minmax(0,1fr);gap:6px}}
+.boardcol{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sidecol{display:flex;flex-direction:column;gap:6px;min-width:0}
+.boardwrap{--sqz:min(66px, calc((100vw - 32px - 16px) / 15), calc((100vh - 420px) / 15));width:max-content;max-width:100%;margin:0 auto;background:var(--board);padding:5px;border-radius:10px}
+@media (min-width:701px){.boardwrap{--sqz:min(66px, calc((100vw - 32px - 200px) / 15), calc((100vh - 150px) / 15))}}
+.board{display:grid;grid-template-columns:repeat(15,var(--sqz));grid-template-rows:repeat(15,var(--sqz));gap:2px}
+.sq{border:0;padding:0;background:var(--sq);border-radius:3px;display:grid;place-items:center;font-size:calc(var(--sqz)*.26);font-weight:800;letter-spacing:.02em;cursor:pointer;position:relative;color:var(--muted)}
+.sq.TW{background:var(--tw);color:var(--premtxt)} .sq.DW{background:var(--dw);color:var(--premtxt2)}
+.sq.TL{background:var(--tl);color:var(--premtxt)} .sq.DL{background:var(--dl);color:#1F3450}
+.sq.star::after{content:"✦";font-size:calc(var(--sqz)*.5);color:var(--premtxt2)}
+.board.fog .sq.TW,.board.fog .sq.DW,.board.fog .sq.TL,.board.fog .sq.DL{filter:saturate(.15) opacity(.55)}
+
+.tile{width:100%;height:100%;border-radius:4px;background:var(--tile);color:var(--tile-ink);border:1px solid var(--tile-edge);display:grid;place-items:center;position:relative;font-family:var(--body);font-weight:800;font-size:calc(var(--tz,40px)*.55);line-height:1;box-shadow:0 1px 0 rgba(0,0,0,.18)}
+.tile .v{position:absolute;right:8%;bottom:6%;font-size:calc(var(--tz,40px)*.24);font-weight:600;font-family:var(--mono)}
+.tile.c-red{background:var(--p-red);color:var(--p-red-ink);border-color:#7d1e19}
+.tile.c-black{background:var(--p-black);color:var(--p-black-ink);border-color:#000}
+.tile.c-white{background:var(--p-white);color:var(--p-white-ink);border-color:#9aa1b8}
+.tile.c-gold{background:var(--p-gold);color:var(--p-gold-ink);border-color:#8a6a12}
+.tile[class*="c-"]::before{content:"";position:absolute;left:9%;top:9%;width:18%;height:18%;border-radius:50%;background:currentColor;opacity:.55}
+.tile.blank .L{font-style:italic;font-weight:600;opacity:.85}
+.tile.halo{box-shadow:0 0 0 2px var(--gold),0 0 8px 1px var(--gold)}
+.tile.anoint{outline:2px dashed var(--gold);outline-offset:1px}
+.tile.pending{transform:translateY(-1px);box-shadow:0 0 0 2px var(--focus)}
+.tile.last{box-shadow:inset 0 0 0 2px rgba(214,165,44,.9)}
+.sq .tile{--tz:var(--sqz)}
+
+.statusbar{min-height:28px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px}
+.statusbar .pts{font-family:var(--mono);font-weight:500}
+.statusbar.err{border-color:var(--bad);color:var(--bad)}
+.statusbar.ok{border-color:var(--good)}
+.burden{background:var(--evil-soft);color:var(--evil);border-radius:8px;padding:5px 10px;font-weight:600;font-size:13px}
+
+.tray{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;gap:6px}
+.quickrow{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.quickrow .btn{position:relative}
+
+/* flyouts */
+.flyoutScrim{position:fixed;inset:0;background:rgba(10,12,24,.45);z-index:8}
+.flyout{position:fixed;top:0;right:0;bottom:0;width:min(380px,92vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:-10px 0 24px rgba(0,0,0,.22);z-index:9;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.flyoutHead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;position:sticky;top:-14px;background:var(--surface);padding:2px 0 8px;margin:-2px 0 0}
+.flyoutHead h3{font-family:var(--display);font-weight:400;font-size:20px;margin:0;display:flex;gap:8px;align-items:baseline}
+.flyoutHead h3 small{font-family:var(--body);font-size:12px;color:var(--muted);font-weight:600}
+.trayrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.traylabel{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800;width:74px;flex:none}
+.rack{display:flex;gap:6px;flex-wrap:wrap}
+.rtile{--tz:44px;width:44px;height:44px;padding:0;border:0;background:none;cursor:pointer;border-radius:5px}
+.rtile.sel .tile{transform:translateY(-4px);box-shadow:0 0 0 3px var(--focus)}
+.rtile:disabled{cursor:not-allowed;opacity:.35}
+.rtile.gone{visibility:hidden}
+.rtile,.sq.haspend{touch-action:none}
+.rtile.dragsrc,.sq.dragsrc .tile{opacity:.3}
+.sq.dropok{box-shadow:inset 0 0 0 3px var(--focus)}
+.rack.dropok{outline:2px dashed var(--focus);outline-offset:4px;border-radius:6px}
+#ghost{position:fixed;left:0;top:0;width:46px;height:46px;--tz:46px;pointer-events:none;z-index:30;filter:drop-shadow(0 6px 10px rgba(0,0,0,.3))}
+@media (max-width:480px){.rtile{--tz:38px;width:38px;height:38px}.traylabel{width:100%}}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.sidecol .actions{flex-direction:column}
+.sidecol .actions .btn{width:100%;text-align:center}
+@media (max-width:700px){
+  .sidecol .actions{flex-direction:row;flex-wrap:wrap;gap:6px}
+  .sidecol .actions .btn{width:auto;flex:1 1 30%;padding:7px 8px;font-size:13px}
+  .sidecol .scores{flex-direction:row;flex-wrap:wrap;gap:6px}
+  .sidecol .scores .plaque{flex:1 1 45%}
+  .quickrow{justify-content:center}
+  .tray{padding:5px 8px}
+}
+.btn{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:14px}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.goldb{background:var(--gold-soft);border-color:var(--gold);color:var(--ink)}
+.btn.small{padding:5px 10px;font-size:13px}
+.backbtn{display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 4px}
+.backicon{width:22px;height:30px;border-radius:3px;object-fit:cover;border:1px solid var(--tile-edge);display:block;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.flyoutHead .backicon{width:26px;height:36px;border-radius:4px}
+
+/* side */
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.panel h2{font-family:var(--display);font-weight:400;font-size:19px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.panel h2 small{font-family:var(--body);font-size:12px;color:var(--muted)}
+.cards{display:flex;flex-direction:column;gap:8px}
+.card{border:1px solid var(--line);border-left-width:4px;border-radius:8px;padding:8px 10px;background:var(--surface2);display:flex;flex-direction:column;gap:4px}
+.card.N{border-left-color:var(--nice)} .card.E{border-left-color:var(--evil)}
+.card .cn{display:flex;justify-content:space-between;gap:6px;align-items:center;font-weight:800}
+.card .ct{font-size:13px;color:var(--muted)}
+.card .cwhy{font-size:12px;color:var(--bad)}
+.card .row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.backs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cardback{width:30px;height:42px;border-radius:5px;border:1px solid var(--line);display:grid;place-items:center;font-family:var(--display);font-size:14px}
+.cardback.N{background:var(--nice-soft);color:var(--nice)} .cardback.E{background:var(--evil);color:var(--surface)}
+.goals{display:flex;flex-direction:column;gap:8px}
+.goal{background:var(--gold-soft);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.goal .gn{display:flex;justify-content:space-between;font-weight:800;gap:8px}
+.goal .gn .pts{font-family:var(--mono);font-weight:500}
+.goal .gt{font-size:13px}
+.goal .gp{font-size:12px;color:var(--muted)}
+.log{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.log div{padding:3px 0;border-bottom:1px dashed var(--line)}
+.log b{font-weight:800}
+.counts{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.counts b{font-family:var(--mono);color:var(--ink);font-weight:500}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(10,12,24,.55);display:grid;place-items:center;padding:16px;z-index:10}
+
+/* splash */
+.splash{position:fixed;inset:0;z-index:50;background:#0a0a0f;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.splash img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
+.splashTitle{position:absolute;top:6%;left:50%;transform:translateX(-50%);color:#F4E6BF;font-family:var(--display);font-weight:400;font-size:clamp(24px,6vw,48px);letter-spacing:.02em;text-shadow:0 2px 14px rgba(0,0,0,.85);text-align:center;white-space:nowrap}
+.splashTitle .amp{color:var(--gold)}
+.splashHint{position:absolute;bottom:5%;left:50%;transform:translateX(-50%);color:#F4E6BF;font-family:var(--display);font-size:clamp(15px,2.6vw,20px);letter-spacing:.12em;text-transform:uppercase;text-shadow:0 2px 10px rgba(0,0,0,.8);animation:splashPulse 1.8s infinite ease-in-out;white-space:nowrap}
+@keyframes splashPulse{0%,100%{opacity:.5}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.splashHint{animation:none;opacity:.9}}
+.modal{background:var(--surface);color:var(--ink);border-radius:12px;max-width:560px;width:100%;max-height:calc(100% - 16px);overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line)}
+.modal h3{font-family:var(--display);font-weight:400;font-size:24px;margin:0}
+.modal p{margin:0;color:var(--muted)}
+.pickgrid{display:flex;gap:6px;flex-wrap:wrap}
+.letters{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:6px}
+.letters button{height:40px;border:1px solid var(--tile-edge);background:var(--tile);color:var(--tile-ink);border-radius:5px;font-weight:800;font-size:18px;cursor:pointer}
+.opt{display:flex;gap:8px;flex-wrap:wrap}
+.opt button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.endtable{width:100%;border-collapse:collapse;font-size:14px}
+.endtable th,.endtable td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+.endtable th:first-child,.endtable td:first-child{text-align:left}
+.endtable td small{display:block;color:var(--muted);font-size:12px}
+.endtable tr.total td{font-weight:800;font-family:var(--mono);font-size:17px;border-bottom:0}
+.tablewrap{overflow-x:auto}
+
+/* report & reference */
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:clamp(16px,3vw,32px);display:flex;flex-direction:column;gap:14px}
+.doc h2{font-family:var(--display);font-weight:400;font-size:26px;margin:0;text-wrap:balance}
+.doc h3{font-size:14px;letter-spacing:.07em;text-transform:uppercase;margin:10px 0 0;color:var(--gold)}
+.doc p,.doc li{max-width:72ch}
+.doc ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--surface2);border-radius:8px;padding:10px 12px}
+.kpi b{display:block;font-family:var(--mono);font-size:22px;font-weight:500}
+.kpi span{font-size:12px;color:var(--muted)}
+.dt{width:100%;border-collapse:collapse;font-size:14px}
+.dt th,.dt td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+.dt td.n,.dt th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sev{font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.sev.hi{background:var(--evil-soft);color:var(--evil)} .sev.md{background:var(--gold-soft);color:var(--gold)} .sev.lo{background:var(--nice-soft);color:var(--nice)}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.loading{padding:40px 0;text-align:center;color:var(--muted)}
+.thinking{display:inline-flex;gap:4px}
+.thinking i{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse 1s infinite ease-in-out}
+.thinking i:nth-child(2){animation-delay:.15s}.thinking i:nth-child(3){animation-delay:.3s}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.thinking i{animation:none;opacity:.8}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Angels <span class="amp">&amp;</span> Anagrams</h1>
+      <span class="motto">v2.3 candidate playtest table · two angels, one board, five Halos each</span>
+    </div>
+    <div class="menuWrap">
+      <button class="hamburger" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Help menu">Help</button>
+      <nav class="tabs menu" id="tabMenu" role="tablist" hidden>
+        <button role="tab" id="tab-play" aria-selected="true" data-tab="play">Play</button>
+        <button role="tab" id="tab-howto" aria-selected="false" data-tab="howto">How to play</button>
+        <button role="tab" id="tab-report" aria-selected="false" data-tab="report">Playtest report</button>
+        <button role="tab" id="tab-ref" aria-selected="false" data-tab="ref">Cards &amp; goals</button>
+      </nav>
+    </div>
+  </header>
+
+  <section id="view-play">
+    <div id="loading" class="loading">Loading the word list…</div>
+    <div id="game" hidden>
+      <div class="table">
+        <div class="boardcol">
+          <div id="burden" class="burden" hidden></div>
+          <div class="boardwrap"><div class="board" id="board"></div></div>
+        </div>
+        <div class="sidecol">
+          <div class="scores" id="scores"></div>
+          <div class="statusbar" id="status"></div>
+          <div class="actions" id="actions"></div>
+          <div class="quickrow">
+            <button class="btn small backbtn" id="openHand"><img class="backicon" src="assets/splash.png" alt=""><span>Hand</span></button>
+            <button class="btn small backbtn" id="openGoals"><img class="backicon" src="assets/goals-back.jpg" alt=""><span>Goals</span></button>
+            <button class="btn small" id="openInfo">Claude &amp; log</button>
+          </div>
+        </div>
+      </div>
+      <div class="tray">
+        <div class="trayrow"><span class="traylabel">Tiles</span><div class="rack" id="rack"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="flyoutScrim" id="handScrim" hidden></div>
+  <div class="flyout" id="handFlyout" hidden role="dialog" aria-modal="true" aria-label="Your hand">
+    <div class="flyoutHead"><h3><img class="backicon" src="assets/splash.png" alt="">Your hand <small id="handNote"></small></h3><button class="btn small" id="handClose">Close</button></div>
+    <div class="cards" id="hand"></div>
+  </div>
+  <div class="flyoutScrim" id="goalsScrim" hidden></div>
+  <div class="flyout" id="goalsFlyout" hidden role="dialog" aria-modal="true" aria-label="Secret goals">
+    <div class="flyoutHead"><h3><img class="backicon" src="assets/goals-back.jpg" alt="">Secret goals <small>scored at the end</small></h3><button class="btn small" id="goalsClose">Close</button></div>
+    <div class="goals" id="goals"></div>
+  </div>
+
+  <div class="flyoutScrim" id="infoScrim" hidden></div>
+  <div class="flyout" id="infoFlyout" hidden role="dialog" aria-modal="true" aria-label="Claude and table log">
+    <div class="flyoutHead"><h3>Claude &amp; table log</h3><button class="btn small" id="infoClose">Close</button></div>
+    <div class="panel"><h2>Claude <small id="aiNote"></small></h2><div class="backs" id="aiHand"></div></div>
+    <div class="panel"><h2>Table log</h2><div class="counts" id="counts"></div><div style="height:6px"></div><div class="log" id="log"></div></div>
+  </div>
+
+  <section id="view-howto" hidden><div class="doc" id="howto"></div></section>
+  <section id="view-report" hidden><div class="doc" id="report"></div></section>
+  <section id="view-ref" hidden><div class="doc" id="ref"></div></section>
+</div>
+<div id="modalRoot"></div>
+
+<script src="engine.js"></script>
+<script src="report.js"></script>
+<script>
+(() => {
+'use strict';
+const AA = window.AA;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const HU = 0, AI = 1;
+const COLORS = ['red','black','white','gold'];
+const UI = { st:null, agents:null, sel:null, pending:[], mode:null, anointId:null, busy:false, rackOrder:[], passArm:false, aiLevel:'family', youColor:'red' };
+
+// ---------- splash ----------
+(() => {
+  const splash = $('#splash');
+  const dismiss = () => splash.remove();
+  splash.addEventListener('click', dismiss);
+  splash.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dismiss(); } });
+})();
+
+// ---------- tabs / hamburger menu ----------
+const menuBtn = $('#menuBtn'), tabMenu = $('#tabMenu');
+function closeMenu() { tabMenu.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); }
+menuBtn.addEventListener('click', () => {
+  const willOpen = tabMenu.hidden;
+  tabMenu.hidden = !willOpen;
+  menuBtn.setAttribute('aria-expanded', String(willOpen));
+});
+document.addEventListener('click', e => { if (!tabMenu.hidden && !e.target.closest('.menuWrap')) closeMenu(); });
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  for (const t of ['play','howto','report','ref']) $('#view-' + t).hidden = t !== b.dataset.tab;
+  try { localStorage.setItem('aa-tab', b.dataset.tab); } catch (e) {}
+  closeMenu();
+}));
+
+// ---------- flyouts (hand / goals) ----------
+function openFlyout(name) { $('#' + name + 'Scrim').hidden = false; $('#' + name + 'Flyout').hidden = false; }
+function closeFlyout(name) { $('#' + name + 'Scrim').hidden = true; $('#' + name + 'Flyout').hidden = true; }
+$('#openHand').addEventListener('click', () => openFlyout('hand'));
+$('#handClose').addEventListener('click', () => closeFlyout('hand'));
+$('#handScrim').addEventListener('click', () => closeFlyout('hand'));
+$('#openGoals').addEventListener('click', () => openFlyout('goals'));
+$('#goalsClose').addEventListener('click', () => closeFlyout('goals'));
+$('#goalsScrim').addEventListener('click', () => closeFlyout('goals'));
+$('#openInfo').addEventListener('click', () => openFlyout('info'));
+$('#infoClose').addEventListener('click', () => closeFlyout('info'));
+$('#infoScrim').addEventListener('click', () => closeFlyout('info'));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeFlyout('hand'); closeFlyout('goals'); closeFlyout('info'); } });
+
+// ---------- tile markup ----------
+function tileHTML(t, opts = {}) {
+  const letter = opts.letter ?? (t.L === '?' ? '' : t.L);
+  const val = opts.val ?? AA.VALUES[t.L];
+  const cls = ['tile'];
+  if (t.color) cls.push('c-' + t.color);
+  if (t.L === '?' || opts.blank) cls.push('blank');
+  if (opts.halo) cls.push('halo');
+  if (opts.anoint) cls.push('anoint');
+  if (opts.pending) cls.push('pending');
+  if (opts.last) cls.push('last');
+  return `<span class="${cls.join(' ')}"><span class="L">${esc(letter)}</span>${val ? `<span class="v">${val}</span>` : ''}</span>`;
+}
+
+// ---------- modal helper ----------
+function modal(html, wire) {
+  return new Promise(resolve => {
+    const root = $('#modalRoot');
+    root.innerHTML = `<div class="scrim"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+    const done = v => { root.innerHTML = ''; resolve(v); };
+    wire(root.querySelector('.modal'), done);
+    const f = root.querySelector('button:not(:disabled)'); if (f) f.focus();
+  });
+}
+// pick tiles from a list: exact n or up to n
+function pickTiles(title, text, tiles, n, exact, confirmLabel) {
+  return modal(`<h3>${esc(title)}</h3><p>${esc(text)}</p><div class="pickgrid" id="pg"></div><div class="actions"><button class="btn primary" id="ok">${esc(confirmLabel || 'Confirm')}</button></div>`, (m, done) => {
+    const chosen = new Set();
+    const pg = m.querySelector('#pg'), ok = m.querySelector('#ok');
+    const draw = () => {
+      pg.innerHTML = tiles.map(t => `<button class="rtile ${chosen.has(t.id) ? 'sel' : ''}" data-id="${t.id}" aria-pressed="${chosen.has(t.id)}">${tileHTML(t)}</button>`).join('');
+      ok.disabled = exact ? chosen.size !== n : chosen.size > n;
+      ok.textContent = (confirmLabel || 'Confirm') + (exact ? ` (${chosen.size}/${n})` : ` (${chosen.size})`);
+    };
+    pg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const id = +b.dataset.id; if (chosen.has(id)) chosen.delete(id); else if (chosen.size < n) chosen.add(id); draw(); });
+    ok.addEventListener('click', () => done(tiles.filter(t => chosen.has(t.id))));
+    draw();
+  });
+}
+function pickCard(title, text, cards) {
+  return modal(`<h3>${esc(title)}</h3><p>${esc(text)}</p><div class="cards">${cards.map((id, i) => `<button class="card ${AA.CARD[id].side}" data-i="${i}" style="text-align:left;cursor:pointer"><span class="cn">${esc(AA.CARD[id].name)}<span class="chip ${AA.CARD[id].side === 'N' ? 'nice' : ''}">${AA.CARD[id].side === 'N' ? 'Nice' : 'Evil'}</span></span><span class="ct">${esc(AA.CARD[id].text)}</span></button>`).join('')}</div>`, (m, done) => {
+    m.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => done(cards[+b.dataset.i])));
+  });
+}
+function pickLetter(title) {
+  return modal(`<h3>${esc(title)}</h3><p>Pick the letter this tile stands for. It scores 0.</p><div class="letters">${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => `<button data-l="${l}">${l}</button>`).join('')}</div><div class="actions"><button class="btn" id="cx">Cancel</button></div>`, (m, done) => {
+    m.querySelectorAll('button[data-l]').forEach(b => b.addEventListener('click', () => done(b.dataset.l)));
+    m.querySelector('#cx').addEventListener('click', () => done(null));
+  });
+}
+function notice(title, text) {
+  return modal(`<h3>${esc(title)}</h3><p>${text}</p><div class="actions"><button class="btn primary" id="ok">OK</button></div>`, (m, done) => m.querySelector('#ok').addEventListener('click', () => done()));
+}
+
+// ---------- human agent ----------
+const humanAgent = {
+  async decide(kind, ctx) {
+    const { st, p } = ctx;
+    switch (kind) {
+      case 'keep': return pickTiles('Bag burn', `You drew 14 tiles. Keep ${ctx.n} as your opening rack. The other ${14 - ctx.n} leave the game face-down.`, ctx.tiles, ctx.n, true, 'Keep these');
+      case 'target': return AI;
+      case 'tithe': return pickCard('Tithe', 'Claude played Tithe on you. Discard one card from your hand; you will draw a replacement.', p.cards);
+      case 'passGive': return pickCard('Pass the Halo', 'Choose one card to give to the other player.', p.cards);
+      case 'manna': return pickTiles('Fresh Manna', 'Pick 2 rack tiles to return to the bag. You will draw 2 new ones.', p.rack.filter(t => !pendingIds().has(t.id)), 2, true, 'Return');
+      case 'jubilee': return pickTiles('Jubilee', ctx.n === 3 ? 'You may return up to 3 rack tiles and redraw.' : 'Claude played Jubilee. You may return up to 2 rack tiles and redraw (or none).', p.rack.filter(t => p.idx !== HU || !pendingIds().has(t.id)), ctx.n, false, 'Return');
+      case 'covenant': return modal(`<h3>Bury a secret goal</h3><p>Choose one of your secret goals to bury. You'll draw a replacement.</p><div class="goals">${p.goals.map((g, i) => `<button class="goal" data-i="${i}" style="border:0;text-align:left;cursor:pointer"><span class="gn">${esc(AA.GOAL[g].name)}</span><span class="gt">${esc(AA.GOAL[g].text)}</span></button>`).join('')}</div>`, (m, done) => m.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => done(+b.dataset.i))));
+      case 'secondSightKeep': return modal(`<h3>Second Sight</h3><p>You drew 2 goals. Keep one; the other goes back under the deck.</p><div class="goals">${ctx.options.map((g, i) => `<button class="goal" data-i="${i}" style="border:0;text-align:left;cursor:pointer"><span class="gn">${esc(AA.GOAL[g].name)}</span><span class="gt">${esc(AA.GOAL[g].text)}</span></button>`).join('')}</div>`, (m, done) => m.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => done(ctx.options[+b.dataset.i]))));
+    }
+  },
+};
+
+// ---------- start ----------
+async function boot() {
+  try {
+    const [w, c] = await Promise.all([fetch('words.txt').then(r => r.text()), fetch('common.txt').then(r => r.text())]);
+    AA.loadDict(w); AA.loadCommon(c);
+  } catch (e) { $('#loading').textContent = 'The word list did not load. Refresh the page to try again.'; return; }
+  $('#loading').hidden = true;
+  startScreen();
+}
+function startScreen() {
+  let level = UI.aiLevel, color = UI.youColor;
+  modal(`<h3>New game</h3>
+    <p>You against Claude, with the Angels and Anagrams v2.2 add-on. Standard 15×15 board and 100-tile bag. Words are checked against a ${AA.dict.count.toLocaleString()}-word list.</p>
+    <div><b>Your angel color</b><div class="opt" id="col" style="margin-top:6px">${COLORS.map(c => `<button class="btn small" data-c="${c}" aria-pressed="${c === color}">${c[0].toUpperCase() + c.slice(1)}</button>`).join('')}</div></div>
+    <div><b>How Claude plays</b><div class="opt" id="lvl" style="margin-top:6px">
+      <button class="btn small" data-l="casual" aria-pressed="${level === 'casual'}">Casual: everyday words, loose play</button>
+      <button class="btn small" data-l="family" aria-pressed="${level === 'family'}">Family: everyday words, sharp play</button>
+      <button class="btn small" data-l="expert" aria-pressed="${level === 'expert'}">Expert: any word in the list</button></div></div>
+    <div class="actions"><button class="btn primary" id="go">Deal the tiles</button></div>`, (m, done) => {
+    m.querySelectorAll('#col button').forEach(b => b.addEventListener('click', () => { color = b.dataset.c; m.querySelectorAll('#col button').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+    m.querySelectorAll('#lvl button').forEach(b => b.addEventListener('click', () => { level = b.dataset.l; m.querySelectorAll('#lvl button').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+    m.querySelector('#go').addEventListener('click', () => done());
+  }).then(() => newGame(level, color));
+}
+async function newGame(level, color) {
+  UI.aiLevel = level; UI.youColor = color;
+  const aiColor = color === 'gold' ? 'red' : 'gold';
+  const st = AA.newGame({ addon: true, players: [{ name: 'You', color, human: true }, { name: 'Claude', color: aiColor, level }] });
+  UI.st = st; UI.agents = [humanAgent, AA.aiAgent()];
+  UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null;
+  $('#game').hidden = false;
+  await AA.dealRacks(st, (p, tiles, n) => UI.agents[p.idx].decide('keep', { st, p, tiles, n }));
+  UI.rackOrder = st.players[HU].rack.concat(st.players[HU].supply).map(t => t.id);
+  st.turn = Math.random() < .5 ? HU : AI;
+  AA.log(st, st.turn === HU ? 'You go first.' : 'Claude goes first.');
+  if (st.turn === HU) startHumanTurn(); else aiTurn();
+}
+AA.log = AA.log || ((st, msg, who) => st.log.push({ t: st.turnNo, who: who ?? null, msg }));
+
+function startHumanTurn() {
+  AA.beginTurn(UI.st);
+  UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null; UI.passArm = false;
+  render();
+}
+async function aiTurn() {
+  UI.busy = true; render();
+  await sleep(450);
+  const st = UI.st;
+  AA.beginTurn(st);
+  render();
+  await sleep(60);
+  const over = await AA.aiTurn(st, UI.agents, AI);
+  UI.busy = false;
+  syncRack();
+  if (over || st.over) return endGame();
+  startHumanTurn();
+}
+function syncRack() {
+  const p = UI.st.players[HU];
+  const ids = p.rack.concat(p.supply).map(t => t.id);
+  UI.rackOrder = UI.rackOrder.filter(id => ids.includes(id)).concat(ids.filter(id => !UI.rackOrder.includes(id)));
+}
+
+// ---------- human actions ----------
+const pendingIds = () => new Set(UI.pending.map(x => x.tile.id));
+function placementsForEngine() {
+  return UI.pending.map(x => ({ r: x.r, c: x.c, letter: x.letter, tile: x.tile, halo: !!x.halo }));
+}
+async function placeAt(r, c) {
+  const st = UI.st, p = st.players[HU];
+  const exist = UI.pending.find(x => x.r === r && x.c === c);
+  if (exist) {
+    if (UI.mode === 'halo') {
+      const L = await pickLetter('Halo Blank');
+      if (L) { UI.pending.forEach(x => { if (x.halo) { x.halo = false; x.letter = x.tile.L === '?' ? x.letter : x.tile.L; } }); exist.halo = true; exist.letter = L; }
+      UI.mode = null; return render();
+    }
+    if (UI.mode === 'anoint') { UI.anointId = exist.tile.id; UI.mode = null; return render(); }
+    UI.pending = UI.pending.filter(x => x !== exist);
+    if (UI.anointId === exist.tile.id) UI.anointId = null;
+    return render();
+  }
+  if (UI.sel == null) return;
+  const id = UI.sel; UI.sel = null;
+  return placeTile(id, r, c);
+}
+async function placeTile(id, r, c) {
+  const st = UI.st, p = st.players[HU];
+  if (st.board[r][c] || UI.pending.some(x => x.r === r && x.c === c)) return render();
+  if (pendingIds().has(id)) return render();
+  const t = p.rack.concat(p.supply).find(x => x.id === id);
+  if (!t) return render();
+  if (t.color && st.cur.burden === 'nocolors') { setStatus('Iron Rod: you cannot place colored tiles this turn.', 'err'); return; }
+  let letter = t.L;
+  if (t.L === '?') { letter = await pickLetter('Blank tile'); if (!letter) return render(); }
+  UI.pending.push({ r, c, tile: t, letter, halo: false });
+  render();
+}
+function movePending(pd, r, c) {
+  const st = UI.st;
+  if (st.board[r][c] || UI.pending.some(x => x !== pd && x.r === r && x.c === c)) return render();
+  pd.r = r; pd.c = c; render();
+}
+function recallPending(pd, beforeId) {
+  UI.pending = UI.pending.filter(x => x !== pd);
+  if (UI.anointId === pd.tile.id) UI.anointId = null;
+  moveInRack(pd.tile.id, beforeId);
+  render();
+}
+function moveInRack(id, beforeId) {
+  const a = UI.rackOrder.filter(x => x !== id);
+  const i = beforeId == null ? a.length : a.indexOf(beforeId);
+  a.splice(i < 0 ? a.length : i, 0, id);
+  UI.rackOrder = a;
+}
+async function playWord() {
+  const st = UI.st;
+  const pls = placementsForEngine();
+  const ai = UI.anointId != null ? pls.findIndex(x => x.tile.id === UI.anointId) : undefined;
+  const me = st.players[HU];
+  const before = me.goals.map(g => AA.goalScore(st, me, g).pts);
+  try {
+    AA.commitMove(st, HU, pls, ai >= 0 ? ai : undefined);
+  } catch (e) { setStatus(e.message, 'err'); return; }
+  me.goals.forEach((g, i) => { const now = AA.goalScore(st, me, g); if (now.pts !== before[i]) AA.log(st, `Your goal ${AA.GOAL[g].name} is now worth ${now.pts} (${now.note}). Only you see this line.`); });
+  UI.pending = []; UI.anointId = null;
+  finishHumanTurn();
+}
+function finishHumanTurn() {
+  const over = AA.endTurn(UI.st);
+  syncRack();
+  if (over || UI.st.over) return endGame();
+  aiTurn();
+}
+async function doExchange() {
+  const p = UI.st.players[HU];
+  const pick = await pickTiles('Exchange tiles', 'Choose rack tiles to swap with the bag. You score nothing this turn. Colored tiles stay with you.', p.rack, 7, false, 'Exchange');
+  if (!pick.length) return;
+  AA.exchange(UI.st, HU, pick);
+  finishHumanTurn();
+}
+async function playHandCard(id) {
+  const free = UI.st.players[HU].rack.filter(t => !pendingIds().has(t.id)).length;
+  if (id === 'manna' && free < 2) { setStatus('Fresh Manna needs 2 rack tiles that are not on the board. Take some back first.', 'err'); return; }
+  try { await AA.playCard(UI.st, UI.agents, HU, id); }
+  catch (e) { setStatus(e.message, 'err'); return; }
+  syncRack(); render();
+  closeFlyout('hand');
+}
+
+// ---------- preview ----------
+let statusOverride = null;
+function setStatus(msg, kind) { statusOverride = { msg, kind }; renderStatus(); }
+function renderStatus() {
+  const el = $('#status'), st = UI.st, cur = st.cur;
+  el.className = 'statusbar';
+  el.hidden = false;
+  if (statusOverride) { el.textContent = statusOverride.msg; if (statusOverride.kind) el.classList.add(statusOverride.kind); statusOverride = null; return; }
+  if (st.over) { el.textContent = 'Game over.'; return; }
+  if (UI.busy || st.turn !== HU) { el.innerHTML = `Claude is thinking <span class="thinking"><i></i><i></i><i></i></span>`; return; }
+  if (!UI.pending.length) {
+    const hints = [];
+    if (cur.card) hints.push(`Card played: <b>${esc(AA.CARD[cur.card].name)}</b>.`);
+    if (cur.halo) hints.push('Halo Blank is live: place tiles, then tap “Pick Halo tile”.');
+    if (cur.anoint) hints.push('Anoint is live: place tiles, then tap “Pick Anointed tile”.');
+    el.innerHTML = hints.join(' ');
+    el.hidden = !hints.length;
+    return;
+  }
+  const pls = placementsForEngine();
+  const err = AA.validate(st, pls);
+  if (err) { el.textContent = err; el.classList.add('err'); return; }
+  if (cur.burden === 'nocolors' && pls.some(x => x.tile.color)) { el.textContent = 'Iron Rod: you cannot place colored tiles this turn.'; el.classList.add('err'); return; }
+  const ai = UI.anointId != null ? pls.findIndex(x => x.tile.id === UI.anointId) : undefined;
+  const res = AA.scoreMove(st.board, pls.map(x => ({ r: x.r, c: x.c, letter: x.letter, val: AA.tileVal(x) })), { plain: cur.burden === 'plain', anointIdx: ai >= 0 && cur.anoint ? ai : undefined });
+  let bonus = '';
+  const p = st.players[HU];
+  if (cur.bonus) {
+    const mw = res.main.w; let b = 0;
+    if (cur.bonus === 'blessed') b = 10;
+    if (cur.bonus === 'facesum') b = Math.max(8, res.main.cells.reduce((a, x) => a + x.val, 0));
+    if (cur.bonus === 'rainbow') b = pls.filter(x => x.tile.color === p.color).length >= 2 ? 15 : 0;
+    if (cur.bonus === 'sacred') { const v = [...mw].filter(ch => 'AEIOU'.includes(ch)).length; b = (v >= 3 || mw.length - v >= 3 || /[JQXZK]/.test(mw)) ? 8 : 0; }
+    bonus = ` <span class="chip gold">${esc(AA.CARD[cur.bonus].name)} +${b}</span>`;
+  }
+  el.classList.add('ok');
+  el.innerHTML = `<span class="pts">${res.score} pts</span> · main word <b>${esc(res.main.w)}</b>${res.words.length > 1 ? ` · also ${res.words.slice(1).map(w => esc(w.w) + ' ' + w.s).join(', ')}` : ''}${res.bingo ? ' · <b>bingo +50</b>' : ''}${bonus}`;
+}
+
+// ---------- render ----------
+function render() {
+  const st = UI.st; if (!st) return;
+  const p = st.players[HU], ai = st.players[AI], cur = st.cur || {};
+  const myTurn = st.turn === HU && !UI.busy && !st.over;
+  // scores
+  $('#scores').innerHTML = st.players.map(x => `<div class="plaque ${st.turn === x.idx && !st.over ? 'active' : ''}">
+    <span class="swatch" style="background:var(--p-${x.color})"></span>
+    <span class="who">${esc(x.name)} <span class="halos" title="Card plays used (Halos)">${[0,1,2,3,4].map(i => `<i class="${i < x.plays ? 'used' : ''}"></i>`).join('')}</span>
+      ${x.burden ? `<span class="chip">${burdenName(x.burden)} next turn</span>` : ''}</span>
+    <span class="tot">${AA.total(x)}</span>
+    <span class="sub">board ${x.score} · cards ${x.extras >= 0 ? '+' : ''}${x.extras}</span></div>`).join('');
+  // burden banner
+  const bb = $('#burden');
+  if (myTurn && cur.burden) { bb.hidden = false; bb.textContent = burdenText(cur.burden); } else bb.hidden = true;
+  // board
+  const pend = new Map(UI.pending.map(x => [x.r * 15 + x.c, x]));
+  const lastTurn = Math.max(0, ...st.board.flat().filter(Boolean).map(x => x.turn));
+  const b = $('#board');
+  b.classList.toggle('fog', myTurn && cur.burden === 'plain');
+  let h = '';
+  for (let r = 0; r < 15; r++) for (let c = 0; c < 15; c++) {
+    const cell = st.board[r][c], pm = AA.PREM[r][c], pd = pend.get(r * 15 + c);
+    const star = r === 7 && c === 7;
+    let inner = '';
+    if (cell) inner = tileHTML({ L: cell.blank ? '?' : cell.letter, color: cell.color }, { letter: cell.letter, val: cell.value, blank: cell.blank, halo: cell.halo, last: cell.turn === lastTurn && lastTurn > 0 });
+    else if (pd) inner = tileHTML(pd.tile, { letter: pd.letter, val: AA.tileVal(pd), blank: pd.tile.L === '?', halo: pd.halo, anoint: UI.anointId === pd.tile.id, pending: true });
+    else if (star) inner = '';
+    else if (pm) inner = pm;
+    const label = cell ? `${cell.letter}` : pd ? `${pd.letter} (yours, tap to take back)` : `${pm || 'empty'} row ${r + 1} column ${c + 1}`;
+    h += `<button class="sq ${pd ? 'haspend' : ''} ${pm && !cell && !pd ? pm : ''} ${star && !cell && !pd ? 'star DW' : ''}" data-r="${r}" data-c="${c}" aria-label="${esc(label)}" ${cell || !myTurn ? 'tabindex="-1"' : ''}>${inner}</button>`;
+  }
+  b.innerHTML = h;
+  // tray (rack + colored tiles, one combined row)
+  const used = pendingIds();
+  const noCol = myTurn && cur.burden === 'nocolors';
+  const trayTiles = UI.rackOrder.map(id => p.rack.concat(p.supply).find(t => t.id === id)).filter(Boolean);
+  $('#rack').innerHTML = trayTiles.map(t => {
+    const disabled = !myTurn || (t.color && noCol);
+    const label = t.color ? `${p.color} ${t.L === '?' ? 'blank' : t.L}` : (t.L === '?' ? 'blank' : t.L);
+    return `<button class="rtile ${UI.sel === t.id ? 'sel' : ''} ${used.has(t.id) ? 'gone' : ''}" data-id="${t.id}" ${disabled ? 'disabled' : ''} aria-label="${label}">${tileHTML(t)}</button>`;
+  }).join('') || '<span class="counts">Empty</span>';
+  // actions
+  const acts = [];
+  acts.push(`<button class="btn primary" id="aPlay" ${!myTurn || !UI.pending.length ? 'disabled' : ''}>Play word</button>`);
+  acts.push(`<button class="btn" id="aRecall" ${!myTurn || !UI.pending.length ? 'disabled' : ''}>Take back</button>`);
+  acts.push(`<button class="btn" id="aShuffle" ${!myTurn ? 'disabled' : ''}>Shuffle</button>`);
+  if (cur.halo && myTurn) acts.push(`<button class="btn goldb" id="aHalo" ${!UI.pending.length ? 'disabled' : ''} aria-pressed="${UI.mode === 'halo'}">${UI.mode === 'halo' ? 'Tap a placed tile…' : 'Pick Halo tile'}</button>`);
+  if (cur.anoint && myTurn) acts.push(`<button class="btn goldb" id="aAnoint" ${!UI.pending.length ? 'disabled' : ''} aria-pressed="${UI.mode === 'anoint'}">${UI.mode === 'anoint' ? 'Tap a placed tile…' : 'Pick Anointed tile'}</button>`);
+  acts.push(`<button class="btn" id="aExch" ${!myTurn || UI.pending.length || st.bag.length < 7 ? 'disabled' : ''}>Exchange</button>`);
+  acts.push(`<button class="btn" id="aPass" ${!myTurn || UI.pending.length ? 'disabled' : ''}>${UI.passArm ? 'Tap again to pass' : 'Pass'}</button>`);
+  if (st.over) acts.push(`<button class="btn goldb" id="aNew">New game</button>`);
+  $('#actions').innerHTML = acts.join('');
+  // hand
+  $('#handNote').textContent = `${p.plays}/5 Halos used`;
+  $('#hand').innerHTML = p.cards.map(id => {
+    const c = AA.CARD[id];
+    const why = !myTurn ? '' : AA.cardBlockedReason(st, p, id);
+    return `<div class="card ${c.side}"><span class="cn">${esc(c.name)}<span class="chip ${c.side === 'N' ? 'nice' : ''}">${c.side === 'N' ? 'Nice' : 'Evil'}</span></span><span class="ct">${esc(c.text)}</span>
+      <span class="row">${why ? `<span class="cwhy">${esc(why)}</span>` : '<span></span>'}<button class="btn small" data-card="${id}" ${!myTurn || why ? 'disabled' : ''}>Play card</button></span></div>`;
+  }).join('') || '<span class="counts">No cards in hand.</span>';
+  // goals
+  $('#goals').innerHTML = p.goals.map(g => { const gs = AA.goalScore(st, p, g); return `<div class="goal"><span class="gn">${esc(AA.GOAL[g].name)}<span class="pts">${gs.pts} now</span></span><span class="gt">${esc(AA.GOAL[g].text)}</span><span class="gp">${esc(gs.note)}</span></div>`; }).join('');
+  if (p.known[AI]) $('#goals').insertAdjacentHTML('beforeend', `<div class="goal" style="background:var(--evil-soft)"><span class="gn">Claude’s goals (False Prophet)</span><span class="gt">${p.known[AI].map(g => esc(AA.GOAL[g].name)).join(' · ')}</span><span class="gp">As of when you looked.</span></div>`);
+  $('#openHand').textContent = `Hand (${p.cards.length})`;
+  $('#openGoals').textContent = `Goals (${p.goals.length})`;
+  // ai hand backs
+  $('#aiHand').innerHTML = ai.cards.map(id => `<span class="cardback ${AA.CARD[id].side}" title="${AA.CARD[id].side === 'N' ? 'Nice' : 'Evil'} card back">${AA.CARD[id].side === 'N' ? 'N' : 'E'}</span>`).join('') + `<span class="counts" style="margin-left:6px">${ai.cards.length} cards · ${ai.supply.length} colored tiles left · ${ai.rack.length} on rack</span>`;
+  $('#aiNote').textContent = ({ casual: 'Casual', family: 'Family', expert: 'Expert' })[UI.aiLevel] + ' level';
+  // counts + log
+  $('#counts').innerHTML = `<span>Bag <b>${st.bag.length}</b></span><span>Out of game <b>${st.out.length}</b></span><span>Action deck <b>${st.deck.length}</b></span><span>Goal deck <b>${st.goalDeck.length}</b></span>`;
+  $('#log').innerHTML = st.log.slice(-60).map(e => `<div>${e.who != null ? `<b>${esc(st.players[e.who].name)}</b> ` : ''}${esc(e.msg)}</div>`).reverse().join('');
+  renderStatus();
+  fitBoard();
+}
+// ---------- fit the board to whatever room is actually left ----------
+// Measures the real page instead of guessing a fixed reserve, so it holds up
+// no matter how the header or tile tray happen to wrap on a given phone.
+let fitPending = false;
+function fitBoard() {
+  if (fitPending) return;
+  fitPending = true;
+  requestAnimationFrame(() => {
+    fitPending = false;
+    const bw = document.querySelector('.boardwrap');
+    const game = document.querySelector('#game');
+    if (!bw || !game || game.hidden) return;
+    const widthCap = Math.floor((window.innerWidth - (window.innerWidth > 700 ? 232 : 48)) / 15);
+    let lo = 14, hi = Math.max(14, Math.min(66, widthCap));
+    const fits = px => { bw.style.setProperty('--sqz', px + 'px'); return document.documentElement.scrollHeight <= window.innerHeight + 1; };
+    if (!fits(lo)) return; // even smallest doesn't fit (very short screen) — leave it, nothing more to give
+    while (lo < hi) { const mid = Math.ceil((lo + hi + 1) / 2); if (fits(mid)) lo = mid; else hi = mid - 1; }
+    fits(lo);
+  });
+}
+let resizeT;
+window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(fitBoard, 120); });
+window.addEventListener('orientationchange', () => setTimeout(fitBoard, 200));
+const burdenName = b => ({ norider: 'No bonus', plain: 'Fog', nocolors: 'Iron Rod' })[b];
+const burdenText = b => ({ norider: 'Lead Weight: you cannot play a scoring bonus card this turn.', plain: 'Fog the Path: premium squares count as plain this turn.', nocolors: 'Iron Rod: you cannot place colored tiles this turn.' })[b];
+
+// ---------- drag and drop ----------
+const drag = { src: null, active: false, ghost: null, over: null, justDragged: false };
+function canAct() { const st = UI.st; return st && st.turn === HU && !UI.busy && !st.over && !document.querySelector('.scrim'); }
+document.addEventListener('pointerdown', e => {
+  if (!canAct() || e.button > 0) return;
+  const rt = e.target.closest('#rack .rtile');
+  let src = null;
+  if (rt && !rt.disabled && !rt.classList.contains('gone')) src = { kind: 'rack', id: +rt.dataset.id, el: rt };
+  else {
+    const sq = e.target.closest('#board .sq');
+    if (sq && !UI.mode) { const r = +sq.dataset.r, c = +sq.dataset.c; const pd = UI.pending.find(x => x.r === r && x.c === c); if (pd) src = { kind: 'pending', id: pd.tile.id, el: sq, pd }; }
+  }
+  if (!src) return;
+  drag.src = src; drag.active = false; drag.x0 = e.clientX; drag.y0 = e.clientY;
+});
+document.addEventListener('pointermove', e => {
+  if (!drag.src) return;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+    drag.active = true;
+    const p = UI.st.players[HU];
+    const t = p.rack.concat(p.supply).find(x => x.id === drag.src.id);
+    const g = document.createElement('div'); g.id = 'ghost';
+    g.innerHTML = drag.src.pd ? tileHTML(t, { letter: drag.src.pd.letter, blank: t.L === '?', val: AA.tileVal(drag.src.pd) }) : tileHTML(t);
+    document.body.appendChild(g); drag.ghost = g;
+    drag.src.el.classList.add('dragsrc');
+    UI.sel = null;
+  }
+  e.preventDefault();
+  drag.ghost.style.transform = `translate(${e.clientX - 23}px, ${e.clientY - 30}px)`;
+  const tgt = dropTarget(e.clientX, e.clientY, drag.src.kind);
+  if (drag.over && drag.over !== tgt?.el) drag.over.classList.remove('dropok');
+  drag.over = tgt ? tgt.el : null;
+  if (drag.over) drag.over.classList.add('dropok');
+}, { passive: false });
+function dropTarget(x, y, kind) {
+  const el = document.elementFromPoint(x, y); if (!el) return null;
+  const sq = el.closest('#board .sq');
+  if (sq) { const r = +sq.dataset.r, c = +sq.dataset.c; if (!UI.st.board[r][c] && !UI.pending.some(p => p.r === r && p.c === c)) return { kind: 'sq', el: sq, r, c }; return null; }
+  const tray = el.closest('.tray');
+  if (tray && (kind === 'rack' || kind === 'pending')) return { kind: 'rack', el: $('#rack') };
+  return null;
+}
+function rackInsertBefore(x, y, skipId) {
+  for (const b of document.querySelectorAll('#rack .rtile')) {
+    const id = +b.dataset.id; if (id === skipId) continue;
+    const r = b.getBoundingClientRect();
+    if (y < r.top) return id;
+    if (y <= r.bottom && x < r.left + r.width / 2) return id;
+  }
+  return null;
+}
+function endDrag(e, cancel) {
+  const d = drag.src; if (!d) return;
+  drag.src = null;
+  if (!drag.active) return;
+  drag.active = false; drag.justDragged = true; setTimeout(() => { drag.justDragged = false; }, 0);
+  drag.ghost?.remove(); drag.ghost = null;
+  d.el.classList.remove('dragsrc');
+  if (drag.over) drag.over.classList.remove('dropok'); drag.over = null;
+  if (cancel) return render();
+  const tgt = dropTarget(e.clientX, e.clientY, d.kind);
+  if (!tgt) return render();
+  if (tgt.kind === 'sq') return d.kind === 'pending' ? movePending(d.pd, tgt.r, tgt.c) : placeTile(d.id, tgt.r, tgt.c);
+  const before = rackInsertBefore(e.clientX, e.clientY, d.id);
+  if (d.kind === 'pending') return recallPending(d.pd, before);
+  moveInRack(d.id, before); render();
+}
+document.addEventListener('pointerup', e => endDrag(e, false));
+document.addEventListener('pointercancel', e => endDrag(e, true));
+document.addEventListener('click', e => { if (drag.justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+
+// ---------- events ----------
+$('#board').addEventListener('click', e => { const s = e.target.closest('.sq'); if (!s || UI.st.turn !== HU || UI.busy || UI.st.over) return; placeAt(+s.dataset.r, +s.dataset.c); });
+function rackClick(e) { const b = e.target.closest('.rtile'); if (!b || b.disabled) return; const id = +b.dataset.id; UI.sel = UI.sel === id ? null : id; render(); }
+$('#rack').addEventListener('click', rackClick);
+$('#hand').addEventListener('click', e => { const b = e.target.closest('button[data-card]'); if (b && !b.disabled) playHandCard(b.dataset.card); });
+$('#actions').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (b.id !== 'aPass') UI.passArm = false;
+  switch (b.id) {
+    case 'aPlay': return playWord();
+    case 'aRecall': UI.pending = []; UI.anointId = null; UI.mode = null; return render();
+    case 'aShuffle': { const a = UI.rackOrder; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return render(); }
+    case 'aHalo': UI.mode = UI.mode === 'halo' ? null : 'halo'; return render();
+    case 'aAnoint': UI.mode = UI.mode === 'anoint' ? null : 'anoint'; return render();
+    case 'aExch': return doExchange();
+    case 'aPass': if (!UI.passArm) { UI.passArm = true; return render(); } UI.passArm = false; AA.passTurn(UI.st, HU); return finishHumanTurn();
+    case 'aNew': return startScreen();
+  }
+});
+
+// ---------- end ----------
+function endGame() {
+  render();
+  const st = UI.st;
+  const [a, b] = st.players;
+  const row = (label, f) => `<tr><td>${label}</td><td>${f(a)}</td><td>${f(b)}</td></tr>`;
+  const goalCell = (x, i) => { const g = x.final.goals[i]; return g ? `${g.pts}<small>${esc(AA.GOAL[g.id].name)}: ${esc(g.note)}</small>` : ''; };
+  const winner = a.final.total === b.final.total ? 'A tie. It stands.' : (a.final.total > b.final.total ? 'You win.' : 'Claude wins.');
+  modal(`<h3>${winner}</h3><p>Secret goals revealed and scored.</p>
+    <div class="tablewrap"><table class="endtable"><thead><tr><th></th><th>You</th><th>Claude</th></tr></thead><tbody>
+    ${row('Board score', x => x.final.board)}
+    ${row('Leftover rack tiles', x => x.final.rackPen)}
+    ${row('Leftover colored tiles', x => x.final.supPen)}
+    ${row('Going-out bonus', x => x.final.outBonus ? '+' + x.final.outBonus : 0)}
+    ${row('Card extras', x => (x.final.extras >= 0 ? '+' : '') + x.final.extras)}
+    ${row('Secret goal A', x => goalCell(x, 0))}
+    ${row('Secret goal B', x => goalCell(x, 1))}
+    <tr class="total"><td>Total</td><td>${a.final.total}</td><td>${b.final.total}</td></tr></tbody></table></div>
+    <div class="actions"><button class="btn primary" id="again">New game</button><button class="btn" id="look">Look at the board</button></div>`, (m, done) => {
+    m.querySelector('#again').addEventListener('click', () => { done(); startScreen(); });
+    m.querySelector('#look').addEventListener('click', () => done());
+  });
+}
+
+// ---------- how to play tab ----------
+function renderHowto() {
+  $('#howto').innerHTML = `<h2>How to play</h2>
+  <p>A quick start. Full card and goal text lives in "Cards &amp; goals" in this menu.</p>
+  <h3>The basics</h3><ul>
+  <li>Play words on the board like Scrabble. Your first word must cross the center star; every word after must connect to a tile already on the board.</li>
+  <li>Letter tiles score their printed value, times any premium square they land on. Your colored tiles (shown alongside your rack) score a flat 4 points each, no premium.</li>
+  <li>Longer words and premium squares score more. Using all 7 of your tiles in one turn is a "bingo" — an extra +50.</li>
+  </ul>
+  <h3>Your turn, in order</h3><ul>
+  <li><b>1. Optional card.</b> You may play one action card from your hand before you play your word. Nice cards help you; Evil cards affect an opponent. You only get 5 card plays for the whole game, so spend them when they count.</li>
+  <li><b>2. Place tiles.</b> Drag tiles onto the board, or tap a tile then tap a square. Tap "Take back" to undo before you commit.</li>
+  <li><b>3. Play the word</b> (or Exchange tiles for new ones, or Pass, if you're stuck).</li>
+  </ul>
+  <h3>Scoring at the end</h3><ul>
+  <li>Everyone reveals 2 secret goals, scored from what actually happened on the board (e.g. "score two 6-letter words"). Check your "Secret goals" panel any time — it shows what each is worth right now.</li>
+  <li>Leftover tiles in your rack cost you points; going out first (using your last tile with the bag empty) earns you the other player's leftovers.</li>
+  <li>Highest total wins.</li>
+  </ul>
+  <p>New to the game? Just play words for a turn or two before worrying about cards and goals — they add strategy once you're comfortable with the board.</p>`;
+}
+
+// ---------- reference tab ----------
+function renderRef() {
+  const live = AA.CARDS.filter(c => c.qty > 0), liveGoals = AA.GOALS.filter(g => g.qty > 0);
+  const cards = live.map(c => `<div class="card ${c.side}"><span class="cn">${esc(c.name)} ×${c.qty}<span class="chip ${c.side === 'N' ? 'nice' : ''}">${c.side === 'N' ? 'Nice' : 'Evil'}</span></span><span class="ct">${esc(c.text)}</span></div>`).join('');
+  const goals = liveGoals.map(g => `<div class="goal"><span class="gn">${esc(g.name)} ×${g.qty}</span><span class="gt">${esc(g.text)}</span></div>`).join('');
+  const cardTotal = live.reduce((a, c) => a + c.qty, 0), goalTotal = liveGoals.reduce((a, g) => a + g.qty, 0);
+  $('#ref').innerHTML = `<h2>Cards and goals in this build</h2>
+  <p>v2.3 candidate rules. Setup for two players: 3 action cards each (hand of 3), 2 secret goals each, a 7-tile colored kit each (E A R S T N and a blank) split into 3 held + 4 in reserve, and a bag burn where each player draws 14, keeps 7, and puts 7 out of the game.</p>
+  <h3>Your turn</h3><ul><li>Optional card, one per turn, any time before you play your word (house rule for this table; v2.2 says start of turn only). Only while you have Halos left (5 per game).</li><li>Place and score tiles. Mix rack tiles and your colored tiles, up to 7. You hold at most 3 colored tiles at a time; a colored tile you place is worth a flat 4 points and is replaced from your reserve at end of turn.</li><li>Scoring-bonus cards pay after scoring. You draw back to 3 cards only on turns you played one.</li><li>Two-player rule: no Evil card if you played an Evil on your previous turn.</li></ul>
+  <h3>How this table rules the grey areas</h3><ul>
+  <li>You choose which 7 of your 14 burn tiles to keep.</li>
+  <li>The game ends when the bag is empty and a player uses every rack tile. Colored tiles don't have to be used up to go out.</li>
+  <li>Leftover colored tiles cost 1 each (the blank costs 0), and the player who went out collects those points too.</li>
+  <li>A Halo Blank tile stays on the board as the letter you named and is worth 0 for the rest of the game.</li>
+  <li>For a one-tile play, the main word is the longer word it makes.</li></ul>
+  <h3>Action deck (${cardTotal})</h3><div class="refgrid">${cards}</div>
+  <h3>Goal deck (${goalTotal})</h3><div class="refgrid">${goals}</div>
+  <h3>Allowed lists</h3><p><b>Creature Comforts:</b> ${[...AA.CREATURES].join(', ')}, plus plurals.</p><p><b>Counting Sheep:</b> ${[...AA.NUMBERS].join(', ')}. PAIR is off unless you agree at setup.</p>`;
+}
+
+renderHowto();
+renderRef();
+if (window.AA_REPORT) $('#report').innerHTML = window.AA_REPORT;
+try { const t = localStorage.getItem('aa-tab'); if (t && t !== 'play') document.querySelector(`nav.tabs button[data-tab="${t}"]`)?.click(); } catch (e) {}
+boot();
+})();
+</script>
+
+</body></html>
