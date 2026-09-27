@@ -729,7 +729,20 @@ function fitBoard() {
     const bw = document.querySelector('.boardwrap');
     const game = document.querySelector('#game');
     if (!bw || !game || game.hidden) return;
-    const widthCap = Math.floor((window.innerWidth - (window.innerWidth > 700 ? 232 : 24)) / 15);
+    const desktop = window.innerWidth > 700;
+    const widthCap = Math.floor((window.innerWidth - (desktop ? 232 : 24)) / 15);
+    if (desktop) {
+      // Desktop: the side column (scores/actions/Hand/Goals) stacks in its own
+      // grid column and its height has nothing to do with board size — sizing
+      // the board to make the WHOLE page fit on screen (old behavior) let a
+      // tall side column force a tiny board. Size purely off the room the
+      // board itself has: page width and a generous vertical budget, letting
+      // the page scroll if the side column happens to run long.
+      const heightCap = Math.floor((window.innerHeight - 140) / 15);
+      const sqz = Math.max(30, Math.min(66, widthCap, heightCap));
+      bw.style.setProperty('--sqz', sqz + 'px');
+      return;
+    }
     let lo = 14, hi = Math.max(14, Math.min(66, widthCap));
     const fits = px => { bw.style.setProperty('--sqz', px + 'px'); return document.documentElement.scrollHeight <= window.innerHeight + 1; };
     if (!fits(lo)) return; // even smallest doesn't fit (very short screen) — leave it, nothing more to give
