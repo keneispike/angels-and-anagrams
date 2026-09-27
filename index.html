@@ -229,6 +229,11 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 .doc h3{font-size:14px;letter-spacing:.07em;text-transform:uppercase;margin:10px 0 0;color:var(--gold)}
 .doc p,.doc li{max-width:72ch}
 .doc ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.ptGallery{display:flex;flex-wrap:wrap;gap:18px;margin:6px 0 4px}
+.ptItem{flex:0 0 auto;width:min(220px,42vw);display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
+.ptItem img{width:100%;border-radius:10px;border:1px solid var(--tile-edge);box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.ptItem .ptCap{font-size:12px;color:var(--muted);max-width:200px}
+.ptRack{width:100%;aspect-ratio:3/2;border-radius:10px;border:1px dashed var(--line);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);padding:10px;text-align:center}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .kpi{background:var(--surface2);border-radius:8px;padding:10px 12px}
 .kpi b{display:block;font-family:var(--mono);font-size:22px;font-weight:500}
@@ -842,7 +847,14 @@ function endGame() {
 // ---------- how to play tab ----------
 function renderHowto() {
   $('#howto').innerHTML = `<h2>How to play</h2>
-  <p>A quick start. Full card and goal text lives in "Cards &amp; goals" in this menu.</p>
+  <h3>For playtesters</h3>
+  <p>Angels &amp; Anagrams is a card-and-tile add-on for a standard Scrabble-style word game — you still play on a 15×15 board with the usual letter tiles, but each player also gets a hand of action cards, two secret end-of-game goals, and a small set of colored tiles. This page (the whole "Play" screen, in fact) is a digital stand-in for that physical add-on so we can playtest the rules before the real components exist. The physical version is meant to include:</p>
+  <div class="ptGallery">
+    <div class="ptItem"><img src="assets/splash.png" alt="Full action card back"><span class="ptCap">Action card back (Nice &amp; Evil cards)</span></div>
+    <div class="ptItem"><img src="assets/goals-back.jpg" alt="Full secret goal card back"><span class="ptCap">Secret goal card back</span></div>
+    <div class="ptItem"><div class="ptRack">Photo coming soon — a custom 3D-printed tile rack with a built-in card holder</div><span class="ptCap">Tile rack with cardholder</span></div>
+  </div>
+  <p>In this digital version, the "Hand" and "Goals" buttons near the board use the same card backs shown above, and the game keeps your rack tiles for you — no physical rack needed to playtest.</p>
   <h3>The basics</h3><ul>
   <li>Play words on the board like Scrabble. Your first word must cross the center star; every word after must connect to a tile already on the board.</li>
   <li>Letter tiles score their printed value, times any premium square they land on. Your colored tiles (shown alongside your rack) score a flat 4 points each, no premium.</li>
