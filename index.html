@@ -38,7 +38,7 @@
   --tile:#EFE5C8; --tile-ink:#2A2418; --tile-edge:#B9A97F; --good:#6BC08E; --bad:#F08A7C; --focus:#86BCDD;
 }
 *{box-sizing:border-box}
-html,body{background:var(--ground)}
+html{background:var(--ground)}
 body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;padding-inline:16px;padding-block:8px 16px}
 .bgWash{position:fixed;inset:0;z-index:-1;background:url('assets/bg-wash.jpg') center top/cover no-repeat;pointer-events:none}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .bgWash{opacity:.35;filter:invert(1) hue-rotate(180deg)}}
