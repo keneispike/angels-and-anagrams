@@ -74,10 +74,12 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 
 /* layout */
 #game{display:flex;flex-direction:column;gap:6px}
-.table{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:10px;align-items:start}
-@media (max-width:700px){.table{grid-template-columns:minmax(0,1fr);gap:6px}}
-.boardcol{display:flex;flex-direction:column;gap:6px;min-width:0}
-.sidecol{display:flex;flex-direction:column;gap:6px;min-width:0}
+.table{display:grid;grid-template-columns:minmax(0,1fr) 190px;grid-template-areas:"board scores" "board status" "board actions" "board quick";gap:8px 10px;align-items:start}
+@media (max-width:700px){.table{grid-template-columns:1fr;grid-template-areas:"scores" "board" "status" "actions" "quick";gap:4px}}
+.boardcol{grid-area:board;display:flex;flex-direction:column;gap:6px;min-width:0}
+.scores{grid-area:scores}
+.statusbar{grid-area:status}
+.actions{grid-area:actions}
 .boardwrap{--sqz:min(66px, calc((100vw - 32px - 16px) / 15), calc((100vh - 420px) / 15));width:max-content;max-width:100%;margin:0 auto;background:var(--board);padding:5px;border-radius:10px}
 @media (min-width:701px){.boardwrap{--sqz:min(66px, calc((100vw - 32px - 200px) / 15), calc((100vh - 150px) / 15))}}
 .board{display:grid;grid-template-columns:repeat(15,var(--sqz));grid-template-rows:repeat(15,var(--sqz));gap:2px}
@@ -108,7 +110,7 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 .burden{background:var(--evil-soft);color:var(--evil);border-radius:8px;padding:5px 10px;font-weight:600;font-size:13px}
 
 .tray{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;gap:6px}
-.quickrow{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.quickrow{grid-area:quick;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .quickrow .btn{position:relative}
 
 /* flyouts */
@@ -130,16 +132,21 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 .rack.dropok{outline:2px dashed var(--focus);outline-offset:4px;border-radius:6px}
 #ghost{position:fixed;left:0;top:0;width:46px;height:46px;--tz:46px;pointer-events:none;z-index:30;filter:drop-shadow(0 6px 10px rgba(0,0,0,.3))}
 @media (max-width:480px){.rtile{--tz:38px;width:38px;height:38px}.traylabel{width:100%}}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
-.sidecol .actions{flex-direction:column}
-.sidecol .actions .btn{width:100%;text-align:center}
+.actions{display:flex;flex-direction:column;gap:8px;flex-wrap:wrap}
+.actions .btn{width:100%;text-align:center}
 @media (max-width:700px){
-  .sidecol .actions{flex-direction:row;flex-wrap:wrap;gap:6px}
-  .sidecol .actions .btn{width:auto;flex:1 1 30%;padding:7px 8px;font-size:13px}
-  .sidecol .scores{flex-direction:row;flex-wrap:wrap;gap:6px}
-  .sidecol .scores .plaque{flex:1 1 45%}
-  .quickrow{justify-content:center}
-  .tray{padding:5px 8px}
+  .actions{flex-direction:row;flex-wrap:wrap;gap:4px;justify-content:center}
+  .actions .btn{width:auto;flex:1 1 28%;padding:4px 5px;font-size:11px;min-height:0}
+  .scores{display:flex;flex-direction:row;flex-wrap:wrap;gap:4px}
+  .scores .plaque{flex:1 1 45%;padding:2px 6px}
+  .scores .plaque .who{font-size:10px}
+  .scores .plaque .tot{font-size:14px}
+  .scores .plaque .sub{font-size:9px;gap:4px}
+  .quickrow{justify-content:center;gap:4px}
+  .quickrow .btn{padding:3px 8px;font-size:11px}
+  .backicon{width:15px;height:20px}
+  .tray{padding:4px 6px}
+  .statusbar{padding:3px 8px;font-size:12px;min-height:22px}
 }
 .btn{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:14px}
 .btn:hover:not(:disabled){border-color:var(--muted)}
@@ -253,15 +260,13 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
           <div id="burden" class="burden" hidden></div>
           <div class="boardwrap"><div class="board" id="board"></div></div>
         </div>
-        <div class="sidecol">
-          <div class="scores" id="scores"></div>
-          <div class="statusbar" id="status"></div>
-          <div class="actions" id="actions"></div>
-          <div class="quickrow">
-            <button class="btn small backbtn" id="openHand"><img class="backicon" src="assets/splash.png" alt=""><span id="handLbl">Hand</span></button>
-            <button class="btn small backbtn" id="openGoals"><img class="backicon" src="assets/goals-back.jpg" alt=""><span id="goalsLbl">Goals</span></button>
-            <button class="btn small" id="openInfo">Claude &amp; log</button>
-          </div>
+        <div class="scores" id="scores"></div>
+        <div class="statusbar" id="status"></div>
+        <div class="actions" id="actions"></div>
+        <div class="quickrow">
+          <button class="btn small backbtn" id="openHand"><img class="backicon" src="assets/splash.png" alt=""><span id="handLbl">Hand</span></button>
+          <button class="btn small backbtn" id="openGoals"><img class="backicon" src="assets/goals-back.jpg" alt=""><span id="goalsLbl">Goals</span></button>
+          <button class="btn small" id="openInfo">Claude &amp; log</button>
         </div>
       </div>
       <div class="tray">
