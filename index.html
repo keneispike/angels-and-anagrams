@@ -74,12 +74,13 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 
 /* layout */
 #game{display:flex;flex-direction:column;gap:6px}
-.table{display:grid;grid-template-columns:minmax(0,1fr) 190px;grid-template-areas:"board scores" "board status" "board actions" "board quick";gap:8px 10px;align-items:start}
-@media (max-width:700px){.table{grid-template-columns:1fr;grid-template-areas:"scores" "board" "status" "actions" "quick";gap:4px}}
+.table{display:grid;grid-template-columns:minmax(0,1fr) 190px;grid-template-areas:"board scores" "board status" "board actions" "board quick" "tray tray";gap:8px 10px;align-items:start}
+@media (max-width:700px){.table{grid-template-columns:1fr;grid-template-areas:"scores" "board" "tray" "status" "actions" "quick";gap:4px}}
 .boardcol{grid-area:board;display:flex;flex-direction:column;gap:6px;min-width:0}
 .scores{grid-area:scores}
 .statusbar{grid-area:status}
 .actions{grid-area:actions}
+.tray{grid-area:tray}
 .boardwrap{--sqz:min(66px, calc((100vw - 32px - 16px) / 15), calc((100vh - 420px) / 15));width:max-content;max-width:100%;margin:0 auto;background:var(--board);padding:5px;border-radius:10px}
 @media (min-width:701px){.boardwrap{--sqz:min(66px, calc((100vw - 32px - 200px) / 15), calc((100vh - 150px) / 15))}}
 .board{display:grid;grid-template-columns:repeat(15,var(--sqz));grid-template-rows:repeat(15,var(--sqz));gap:2px}
@@ -279,9 +280,9 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
           <button class="btn small backbtn" id="openGoals"><img class="backicon" src="assets/goals-back.jpg" alt=""><span id="goalsLbl">Goals</span></button>
           <button class="btn small" id="openInfo">Claude &amp; log</button>
         </div>
-      </div>
-      <div class="tray">
-        <div class="trayrow"><span class="traylabel">Tiles</span><div class="rack" id="rack"></div></div>
+        <div class="tray">
+          <div class="trayrow"><span class="traylabel">Tiles</span><div class="rack" id="rack"></div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -708,7 +709,7 @@ function fitBoard() {
     const bw = document.querySelector('.boardwrap');
     const game = document.querySelector('#game');
     if (!bw || !game || game.hidden) return;
-    const widthCap = Math.floor((window.innerWidth - (window.innerWidth > 700 ? 232 : 48)) / 15);
+    const widthCap = Math.floor((window.innerWidth - (window.innerWidth > 700 ? 232 : 24)) / 15);
     let lo = 14, hi = Math.max(14, Math.min(66, widthCap));
     const fits = px => { bw.style.setProperty('--sqz', px + 'px'); return document.documentElement.scrollHeight <= window.innerHeight + 1; };
     if (!fits(lo)) return; // even smallest doesn't fit (very short screen) — leave it, nothing more to give
