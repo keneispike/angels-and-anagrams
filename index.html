@@ -135,18 +135,29 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 .actions{display:flex;flex-direction:column;gap:8px;flex-wrap:wrap}
 .actions .btn{width:100%;text-align:center}
 @media (max-width:700px){
-  .actions{flex-direction:row;flex-wrap:wrap;gap:4px;justify-content:center}
-  .actions .btn{width:auto;flex:1 1 28%;padding:4px 5px;font-size:11px;min-height:0}
-  .scores{display:flex;flex-direction:row;flex-wrap:wrap;gap:4px}
-  .scores .plaque{flex:1 1 45%;padding:2px 6px}
-  .scores .plaque .who{font-size:10px}
-  .scores .plaque .tot{font-size:14px}
-  .scores .plaque .sub{font-size:9px;gap:4px}
-  .quickrow{justify-content:center;gap:4px}
-  .quickrow .btn{padding:3px 8px;font-size:11px}
-  .backicon{width:15px;height:20px}
-  .tray{padding:4px 6px}
-  .statusbar{padding:3px 8px;font-size:12px;min-height:22px}
+  body{padding-inline:8px;padding-block:4px 6px}
+  .wrap{gap:4px}
+  header.top{gap:6px}
+  .brand h1{font-size:16px}
+  .brand .motto{display:none}
+  .hamburger{padding:4px 8px;font-size:13px}
+  #game{gap:3px}
+  .actions{flex-direction:row;flex-wrap:wrap;gap:3px}
+  .actions .btn{width:auto;flex:1 1 18%;padding:2px 3px;font-size:9px;min-height:0;border-radius:5px}
+  .scores{display:flex;flex-direction:row;flex-wrap:wrap;gap:3px}
+  .scores .plaque{flex:1 1 45%;padding:1px 5px;border-radius:5px}
+  .scores .plaque .swatch{width:9px;height:9px}
+  .scores .plaque .who{font-size:9px;gap:3px}
+  .scores .plaque .tot{font-size:12px}
+  .scores .plaque .sub{font-size:8px;gap:3px}
+  .halos i{width:4px;height:4px}
+  .quickrow{justify-content:center;gap:3px}
+  .quickrow .btn{padding:2px 6px;font-size:9px}
+  .backicon{width:12px;height:16px}
+  .tray{padding:3px 5px;gap:3px}
+  .traylabel{font-size:9px}
+  .statusbar{padding:2px 6px;font-size:10px;min-height:16px;gap:5px}
+  .boardwrap{padding:3px}
 }
 .btn{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:14px}
 .btn:hover:not(:disabled){border-color:var(--muted)}
