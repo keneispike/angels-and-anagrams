@@ -738,7 +738,7 @@ function fitBoard() {
       // tall side column force a tiny board. Size purely off the room the
       // board itself has: page width and a generous vertical budget, letting
       // the page scroll if the side column happens to run long.
-      const heightCap = Math.floor((window.innerHeight - 140) / 15);
+      const heightCap = Math.floor((window.innerHeight - 175) / 15);
       const sqz = Math.max(30, Math.min(66, widthCap, heightCap));
       bw.style.setProperty('--sqz', sqz + 'px');
       return;
