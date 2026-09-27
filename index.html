@@ -85,8 +85,8 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 .statusbar{grid-area:status}
 .actions{grid-area:actions}
 .tray{grid-area:tray}
-.boardwrap{--sqz:min(66px, calc((100vw - 32px - 16px) / 15), calc((100vh - 420px) / 15));width:max-content;max-width:100%;margin:0 auto;background:var(--board);padding:5px;border-radius:10px}
-@media (min-width:701px){.boardwrap{--sqz:min(66px, calc((100vw - 32px - 200px) / 15), calc((100vh - 150px) / 15))}}
+.boardwrap{--sqz:min(66px, calc((100vw - 54px) / 15), calc((100vh - 420px) / 15));width:max-content;max-width:100%;margin:0 auto;background:var(--board);padding:5px;border-radius:10px}
+@media (min-width:701px){.boardwrap{--sqz:min(66px, calc((100vw - 270px) / 15), calc((100vh - 150px) / 15))}}
 .board{display:grid;grid-template-columns:repeat(15,var(--sqz));grid-template-rows:repeat(15,var(--sqz));gap:2px}
 .sq{border:0;padding:0;background:var(--sq);border-radius:3px;display:grid;place-items:center;font-size:calc(var(--sqz)*.26);font-weight:800;letter-spacing:.02em;cursor:pointer;position:relative;color:var(--muted)}
 .sq.TW{background:var(--tw);color:var(--premtxt)} .sq.DW{background:var(--dw);color:var(--premtxt2)}
@@ -730,7 +730,14 @@ function fitBoard() {
     const game = document.querySelector('#game');
     if (!bw || !game || game.hidden) return;
     const desktop = window.innerWidth > 700;
-    const widthCap = Math.floor((window.innerWidth - (desktop ? 232 : 24)) / 15);
+    // Reserve = whatever sits beside the board (side column + gaps on desktop,
+    // just the page's own side padding on mobile) PLUS the board's own chrome:
+    // 14 inter-tile gaps of 2px (28px) + the boardwrap's 5px padding each side
+    // (10px) = 38px that doesn't scale with the tile size. Under-counting this
+    // is what let the rightmost column run off the edge on phones.
+    const boardChrome = 38;
+    const sideReserve = desktop ? 232 : 16;
+    const widthCap = Math.floor((window.innerWidth - sideReserve - boardChrome) / 15);
     if (desktop) {
       // Desktop: the side column (scores/actions/Hand/Goals) stacks in its own
       // grid column and its height has nothing to do with board size — sizing
