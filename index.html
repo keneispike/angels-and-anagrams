@@ -143,8 +143,8 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
   .brand .motto{display:none}
   .hamburger{padding:4px 8px;font-size:13px}
   #game{gap:3px}
-  .actions{flex-direction:row;flex-wrap:wrap;gap:3px}
-  .actions .btn{width:auto;flex:1 1 18%;padding:2px 3px;font-size:9px;min-height:0;border-radius:5px}
+  .actions{flex-direction:row;flex-wrap:nowrap;gap:3px}
+  .actions .btn{width:auto;flex:1 1 0;min-width:0;padding:5px 2px;font-size:10.5px;min-height:0;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .scores{display:flex;flex-direction:row;flex-wrap:wrap;gap:3px}
   .scores .plaque{flex:1 1 45%;padding:1px 5px;border-radius:5px}
   .scores .plaque .swatch{width:9px;height:9px}
@@ -666,13 +666,13 @@ function render() {
   }).join('') || '<span class="counts">Empty</span>';
   // actions
   const acts = [];
-  acts.push(`<button class="btn primary" id="aPlay" ${!myTurn || !UI.pending.length ? 'disabled' : ''}>Play word</button>`);
-  acts.push(`<button class="btn" id="aRecall" ${!myTurn || !UI.pending.length ? 'disabled' : ''}>Take back</button>`);
+  acts.push(`<button class="btn primary" id="aPlay" ${!myTurn || !UI.pending.length ? 'disabled' : ''}>Play</button>`);
+  acts.push(`<button class="btn" id="aRecall" ${!myTurn || !UI.pending.length ? 'disabled' : ''}>Back</button>`);
   acts.push(`<button class="btn" id="aShuffle" ${!myTurn ? 'disabled' : ''}>Shuffle</button>`);
   if (cur.halo && myTurn) acts.push(`<button class="btn goldb" id="aHalo" ${!UI.pending.length ? 'disabled' : ''} aria-pressed="${UI.mode === 'halo'}">${UI.mode === 'halo' ? 'Tap a placed tile…' : 'Pick Halo tile'}</button>`);
   if (cur.anoint && myTurn) acts.push(`<button class="btn goldb" id="aAnoint" ${!UI.pending.length ? 'disabled' : ''} aria-pressed="${UI.mode === 'anoint'}">${UI.mode === 'anoint' ? 'Tap a placed tile…' : 'Pick Anointed tile'}</button>`);
-  acts.push(`<button class="btn" id="aExch" ${!myTurn || UI.pending.length || st.bag.length < 7 ? 'disabled' : ''}>Exchange</button>`);
-  acts.push(`<button class="btn" id="aPass" ${!myTurn || UI.pending.length ? 'disabled' : ''}>${UI.passArm ? 'Tap again to pass' : 'Pass'}</button>`);
+  acts.push(`<button class="btn" id="aExch" ${!myTurn || UI.pending.length || st.bag.length < 7 ? 'disabled' : ''}>Exch</button>`);
+  acts.push(`<button class="btn" id="aPass" ${!myTurn || UI.pending.length ? 'disabled' : ''}>${UI.passArm ? 'Sure?' : 'Pass'}</button>`);
   if (st.over) acts.push(`<button class="btn goldb" id="aNew">New game</button>`);
   $('#actions').innerHTML = acts.join('');
   // hand
