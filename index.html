@@ -565,7 +565,13 @@ function syncRack() {
 function freshRng() { let seed = (Date.now() ^ Math.floor(Math.random() * 2 ** 31)) >>> 0; return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; }
 const RELAY_URL = 'wss://broker.hivemq.com:8884/mqtt';
 function relayTopic(gameId) { return 'angelsanagrams/v1/' + gameId; }
+// The public broker doesn't reliably hand a newly-subscribed device the last
+// "retained" message, so joining relies on a request/response handshake
+// instead: a joining device asks on this topic, and whichever device already
+// has the game state answers by (re)publishing it on the main topic.
+function reqTopic(gameId) { return 'angelsanagrams/v1/' + gameId + '/req'; }
 let mqttClient = null;
+let joinRetryTimer = null;
 function setConn(state) {
   UI.connState = state;
   const el = $('#connBadge'); if (!el) return;
@@ -581,14 +587,33 @@ function connectRelay(gameId) {
   setConn('connecting');
   const client = mqtt.connect(RELAY_URL, { reconnectPeriod: 2000, connectTimeout: 8000, clientId: 'aa-' + Math.random().toString(36).slice(2, 10) });
   mqttClient = client;
-  client.on('connect', () => { if (client !== mqttClient) return; setConn('live'); client.subscribe(relayTopic(gameId), { qos: 1 }); });
+  client.on('connect', () => {
+    if (client !== mqttClient) return;
+    setConn('live');
+    client.subscribe(relayTopic(gameId), { qos: 1 });
+    client.subscribe(reqTopic(gameId), { qos: 1 });
+    if (UI.st) publishState(); // a reconnect might have missed a request while we were down
+  });
   client.on('reconnect', () => { if (client !== mqttClient) return; setConn('reconnecting'); });
   client.on('close', () => { if (client !== mqttClient) return; setConn('offline'); });
   client.on('error', () => { if (client !== mqttClient) return; setConn('offline'); });
   client.on('message', (topic, buf) => {
     if (client !== mqttClient) return;
+    if (topic === reqTopic(gameId)) { if (UI.st) publishState(); return; }
     try { applyIncoming(JSON.parse(buf.toString())); } catch (e) {}
   });
+}
+// Ask whoever's already in the game to send the current state. Retried a
+// few times in case the other device isn't online yet at this exact moment.
+function requestState(gameId, triesLeft) {
+  if (triesLeft == null) triesLeft = 20;
+  clearTimeout(joinRetryTimer);
+  if (!UI.online || UI.gameId !== gameId || UI.st) return; // already have state, or left this game
+  if (mqttClient) mqttClient.publish(reqTopic(gameId), '1', { qos: 1 });
+  const st = $('#status');
+  if (st && !UI.st) st.textContent = triesLeft > 14 ? 'Connecting to your friend’s game…' : 'Still waiting — make sure your friend has the app open too.';
+  if (triesLeft <= 0) return;
+  joinRetryTimer = setTimeout(() => requestState(gameId, triesLeft - 1), 3000);
 }
 function publishState() {
   if (!UI.online || !UI.st) return;
@@ -606,6 +631,7 @@ function applyIncoming(payload) {
   if (!payload || !payload.s || payload.g !== UI.gameId) return;
   const incoming = payload.s;
   if (UI.st && UI.st._rev != null && incoming._rev != null && incoming._rev <= UI.st._rev) return; // our own echo or a stale message
+  clearTimeout(joinRetryTimer);
   incoming.rng = freshRng();
   UI.st = incoming;
   UI.rackOrder = incoming.players[ME].rack.concat(incoming.players[ME].supply).map(t => t.id);
@@ -641,6 +667,7 @@ async function joinFriendGame(gameId) {
   const st = $('#status'); st.hidden = false; st.className = 'statusbar'; st.textContent = 'Connecting to your friend’s game…';
   connectRelay(gameId);
   render();
+  setTimeout(() => requestState(gameId), 1200); // give the socket a moment to finish connecting/subscribing first
 }
 function inviteUrl() { return location.origin + location.pathname + '#j=' + UI.gameId; }
 async function promptInvite() {
