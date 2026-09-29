@@ -320,8 +320,8 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 
   <div class="flyoutScrim" id="infoScrim" hidden></div>
   <div class="flyout" id="infoFlyout" hidden role="dialog" aria-modal="true" aria-label="Claude and table log">
-    <div class="flyoutHead"><h3>Claude &amp; table log</h3><button class="btn small" id="infoClose">Close</button></div>
-    <div class="panel"><h2>Claude <small id="aiNote"></small></h2><div class="backs" id="aiHand"></div></div>
+    <div class="flyoutHead"><h3 id="infoTitle">Claude &amp; table log</h3><button class="btn small" id="infoClose">Close</button></div>
+    <div class="panel"><h2><span id="oppTitle">Claude</span> <small id="aiNote"></small></h2><div class="backs" id="aiHand"></div></div>
     <div class="panel"><h2>Table log</h2><div class="counts" id="counts"></div><div style="height:6px"></div><div class="log" id="log"></div></div>
   </div>
 
@@ -341,8 +341,9 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const HU = 0, AI = 1;
+let ME = HU;
 const COLORS = ['red','black','white','gold'];
-const UI = { st:null, agents:null, sel:null, pending:[], mode:null, anointId:null, busy:false, rackOrder:[], passArm:false, aiLevel:'family', youColor:'red' };
+const UI = { st:null, agents:null, sel:null, pending:[], mode:null, anointId:null, busy:false, rackOrder:[], passArm:false, aiLevel:'family', youColor:'red', online:false, gameId:null };
 
 // ---------- splash ----------
 (() => {
@@ -442,14 +443,26 @@ const humanAgent = {
     const { st, p } = ctx;
     switch (kind) {
       case 'keep': return pickTiles('Bag burn', `You drew 14 tiles. Keep ${ctx.n} as your opening rack. The other ${14 - ctx.n} leave the game face-down.`, ctx.tiles, ctx.n, true, 'Keep these');
-      case 'target': return AI;
+      case 'target': return 1 - ME;
       case 'tithe': return pickCard('Tithe', 'Claude played Tithe on you. Discard one card from your hand; you will draw a replacement.', p.cards);
       case 'passGive': return pickCard('Pass the Halo', 'Choose one card to give to the other player.', p.cards);
       case 'manna': return pickTiles('Fresh Manna', 'Pick 2 rack tiles to return to the bag. You will draw 2 new ones.', p.rack.filter(t => !pendingIds().has(t.id)), 2, true, 'Return');
-      case 'jubilee': return pickTiles('Jubilee', ctx.n === 3 ? 'You may return up to 3 rack tiles and redraw.' : 'Claude played Jubilee. You may return up to 2 rack tiles and redraw (or none).', p.rack.filter(t => p.idx !== HU || !pendingIds().has(t.id)), ctx.n, false, 'Return');
+      case 'jubilee': return pickTiles('Jubilee', ctx.n === 3 ? 'You may return up to 3 rack tiles and redraw.' : 'Jubilee was played. You may return up to 2 rack tiles and redraw (or none).', p.rack.filter(t => p.idx !== ME || !pendingIds().has(t.id)), ctx.n, false, 'Return');
       case 'covenant': return modal(`<h3>Bury a secret goal</h3><p>Choose one of your secret goals to bury. You'll draw a replacement.</p><div class="goals">${p.goals.map((g, i) => `<button class="goal" data-i="${i}" style="border:0;text-align:left;cursor:pointer"><span class="gn">${esc(AA.GOAL[g].name)}</span><span class="gt">${esc(AA.GOAL[g].text)}</span></button>`).join('')}</div>`, (m, done) => m.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => done(+b.dataset.i))));
       case 'secondSightKeep': return modal(`<h3>Second Sight</h3><p>You drew 2 goals. Keep one; the other goes back under the deck.</p><div class="goals">${ctx.options.map((g, i) => `<button class="goal" data-i="${i}" style="border:0;text-align:left;cursor:pointer"><span class="gn">${esc(AA.GOAL[g].name)}</span><span class="gt">${esc(AA.GOAL[g].text)}</span></button>`).join('')}</div>`, (m, done) => m.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => done(ctx.options[+b.dataset.i]))));
     }
+  },
+};
+// stand-in for a friend on another device: only handles the couple of
+// decisions the rules ask the *other* player to make mid-turn (Jubilee,
+// Pass the Halo). It always picks the safe/neutral option so a turn never
+// stalls waiting on a device that isn't here. The friend still makes every
+// decision on their own turn, on their own device, via humanAgent.
+const remoteAutoAgent = {
+  async decide(kind, ctx) {
+    if (kind === 'jubilee') return [];
+    if (kind === 'passGive') { const c = ctx.p.cards; return c[Math.floor(Math.random() * c.length)]; }
+    return null;
   },
 };
 
@@ -460,22 +473,34 @@ async function boot() {
     AA.loadDict(w); AA.loadCommon(c);
   } catch (e) { $('#loading').textContent = 'The word list did not load. Refresh the page to try again.'; return; }
   $('#loading').hidden = true;
+  if (await tryResumeOnline()) return;
   startScreen();
 }
 function startScreen() {
-  let level = UI.aiLevel, color = UI.youColor;
+  UI.online = false; UI.gameId = null; ME = HU;
+  try { localStorage.removeItem('aa-online'); } catch (e) {}
+  let level = UI.aiLevel, color = UI.youColor, vs = 'ai';
   modal(`<h3>New game</h3>
-    <p>You against Claude, with the Angels and Anagrams v2.2 add-on. Standard 15×15 board and 100-tile bag. Words are checked against a ${AA.dict.count.toLocaleString()}-word list.</p>
+    <p>Standard 15×15 board and 100-tile bag, with the Angels and Anagrams v2.2 add-on. Words are checked against a ${AA.dict.count.toLocaleString()}-word list.</p>
+    <div><b>Who's playing</b><div class="opt" id="vs" style="margin-top:6px">
+      <button class="btn small" data-v="ai" aria-pressed="true">Vs Claude</button>
+      <button class="btn small" data-v="friend" aria-pressed="false">Vs a friend (2 devices)</button></div></div>
     <div><b>Your angel color</b><div class="opt" id="col" style="margin-top:6px">${COLORS.map(c => `<button class="btn small" data-c="${c}" aria-pressed="${c === color}">${c[0].toUpperCase() + c.slice(1)}</button>`).join('')}</div></div>
-    <div><b>How Claude plays</b><div class="opt" id="lvl" style="margin-top:6px">
+    <div id="lvlWrap"><b>How Claude plays</b><div class="opt" id="lvl" style="margin-top:6px">
       <button class="btn small" data-l="casual" aria-pressed="${level === 'casual'}">Casual: everyday words, loose play</button>
       <button class="btn small" data-l="family" aria-pressed="${level === 'family'}">Family: everyday words, sharp play</button>
       <button class="btn small" data-l="expert" aria-pressed="${level === 'expert'}">Expert: any word in the list</button></div></div>
+    <p id="friendNote" hidden style="font-size:13px;color:var(--muted)">You'll get a link after your first move — send it to your friend so they can open the game on their own phone or computer and take their turn. Keep sending the newest link back and forth. (To keep setup simple, this mode skips the 14-tile "bag burn" and just deals 7 tiles each.)</p>
     <div class="actions"><button class="btn primary" id="go">Deal the tiles</button></div>`, (m, done) => {
+    m.querySelectorAll('#vs button').forEach(b => b.addEventListener('click', () => {
+      vs = b.dataset.v; m.querySelectorAll('#vs button').forEach(x => x.setAttribute('aria-pressed', x === b));
+      m.querySelector('#lvlWrap').hidden = vs === 'friend'; m.querySelector('#friendNote').hidden = vs !== 'friend';
+      m.querySelector('#go').textContent = vs === 'friend' ? 'Start' : 'Deal the tiles';
+    }));
     m.querySelectorAll('#col button').forEach(b => b.addEventListener('click', () => { color = b.dataset.c; m.querySelectorAll('#col button').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
     m.querySelectorAll('#lvl button').forEach(b => b.addEventListener('click', () => { level = b.dataset.l; m.querySelectorAll('#lvl button').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
     m.querySelector('#go').addEventListener('click', () => done());
-  }).then(() => newGame(level, color));
+  }).then(() => vs === 'friend' ? newFriendGame(color) : newGame(level, color));
 }
 async function newGame(level, color) {
   UI.aiLevel = level; UI.youColor = color;
@@ -511,9 +536,93 @@ async function aiTurn() {
   startHumanTurn();
 }
 function syncRack() {
-  const p = UI.st.players[HU];
+  const p = UI.st.players[ME];
   const ids = p.rack.concat(p.supply).map(t => t.id);
   UI.rackOrder = UI.rackOrder.filter(id => ids.includes(id)).concat(ids.filter(id => !UI.rackOrder.includes(id)));
+}
+
+// ---------- vs a friend (2 devices, no server) ----------
+// The whole game state travels in the URL's #g= fragment (fragments never hit
+// a server, so this works fine on plain static hosting). Whoever just moved
+// copies a fresh link and sends it to the other player any way they like
+// (text, email, etc.); opening it hands play to the other device.
+function freshRng() { let seed = (Date.now() ^ Math.floor(Math.random() * 2 ** 31)) >>> 0; return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; }
+async function newFriendGame(color) {
+  UI.youColor = color;
+  const friendColor = color === 'gold' ? 'red' : 'gold';
+  const st = AA.newGame({ addon: true, players: [{ name: 'Player 1', color, human: true }, { name: 'Player 2', color: friendColor, human: true }] });
+  await AA.dealRacks(st, (p, tiles, n) => tiles.slice(0, n));
+  UI.st = st; UI.online = true; ME = HU; UI.gameId = Math.random().toString(36).slice(2, 8);
+  UI.agents = [humanAgent, remoteAutoAgent];
+  UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null;
+  UI.rackOrder = st.players[ME].rack.concat(st.players[ME].supply).map(t => t.id);
+  $('#game').hidden = false;
+  st.turn = ME;
+  AA.log(st, 'You go first.');
+  startHumanTurn();
+  saveOnlineState();
+  promptShareLink('Send this link to your friend so they can join and see the board.');
+}
+function encodeState() {
+  const trimmed = JSON.parse(JSON.stringify(UI.st));
+  delete trimmed.rng;
+  trimmed.log = trimmed.log.slice(-20);
+  return { s: trimmed, t: 1 - ME, g: UI.gameId };
+}
+function shareUrl() {
+  const json = JSON.stringify(encodeState());
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return location.origin + location.pathname + '#g=' + b64;
+}
+async function promptShareLink(introText) {
+  const url = shareUrl();
+  await modal(`<h3>Your turn is done</h3><p>${esc(introText || "Send this link to your friend for their turn. You'll get a new link to send back after each move.")}</p>
+    <input id="lnk" readonly value="${esc(url)}" style="width:100%;font-size:12px;padding:8px;border:1px solid var(--line);border-radius:6px;margin:8px 0;box-sizing:border-box">
+    <div class="actions">${navigator.share ? '<button class="btn primary" id="sh">Share…</button>' : ''}<button class="btn" id="cp">Copy link</button><button class="btn" id="ok">Done</button></div>`, (m, done) => {
+    const input = m.querySelector('#lnk');
+    input.addEventListener('click', () => input.select());
+    m.querySelector('#cp').addEventListener('click', async () => { try { await navigator.clipboard.writeText(url); m.querySelector('#cp').textContent = 'Copied!'; } catch (e) { input.select(); } });
+    const sh = m.querySelector('#sh'); if (sh) sh.addEventListener('click', () => navigator.share({ title: 'Angels and Anagrams — your turn', url }).catch(() => {}));
+    m.querySelector('#ok').addEventListener('click', () => done());
+  });
+  render();
+}
+function saveOnlineState() {
+  if (!UI.online) return;
+  try {
+    const trimmed = JSON.parse(JSON.stringify(UI.st));
+    delete trimmed.rng;
+    localStorage.setItem('aa-online', JSON.stringify({ s: trimmed, t: ME, g: UI.gameId, youColor: UI.youColor }));
+  } catch (e) {}
+}
+function loadOnlinePayload(payload) {
+  const st = payload.s;
+  st.rng = freshRng();
+  UI.st = st; UI.online = true; ME = payload.t; UI.gameId = payload.g;
+  UI.youColor = st.players[ME] ? st.players[ME].color : UI.youColor;
+  UI.agents = [null, null]; UI.agents[ME] = humanAgent; UI.agents[1 - ME] = remoteAutoAgent;
+  UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null; UI.passArm = false;
+  UI.rackOrder = st.players[ME].rack.concat(st.players[ME].supply).map(t => t.id);
+  $('#game').hidden = false;
+  if (!st.over && (!st.cur || st.cur.p !== st.turn)) AA.beginTurn(st);
+  saveOnlineState();
+  render();
+}
+async function tryResumeOnline() {
+  const hash = location.hash;
+  if (hash.startsWith('#g=')) {
+    try {
+      const payload = JSON.parse(decodeURIComponent(escape(atob(hash.slice(3)))));
+      history.replaceState(null, '', location.pathname);
+      loadOnlinePayload(payload);
+      return true;
+    } catch (e) { /* fall through to local resume */ }
+  }
+  try {
+    const raw = localStorage.getItem('aa-online');
+    if (raw) { loadOnlinePayload(JSON.parse(raw)); return true; }
+  } catch (e) {}
+  return false;
 }
 
 // ---------- human actions ----------
@@ -522,7 +631,7 @@ function placementsForEngine() {
   return UI.pending.map(x => ({ r: x.r, c: x.c, letter: x.letter, tile: x.tile, halo: !!x.halo }));
 }
 async function placeAt(r, c) {
-  const st = UI.st, p = st.players[HU];
+  const st = UI.st, p = st.players[ME];
   const exist = UI.pending.find(x => x.r === r && x.c === c);
   if (exist) {
     if (UI.mode === 'halo') {
@@ -540,7 +649,7 @@ async function placeAt(r, c) {
   return placeTile(id, r, c);
 }
 async function placeTile(id, r, c) {
-  const st = UI.st, p = st.players[HU];
+  const st = UI.st, p = st.players[ME];
   if (st.board[r][c] || UI.pending.some(x => x.r === r && x.c === c)) return render();
   if (pendingIds().has(id)) return render();
   const t = p.rack.concat(p.supply).find(x => x.id === id);
@@ -572,10 +681,10 @@ async function playWord() {
   const st = UI.st;
   const pls = placementsForEngine();
   const ai = UI.anointId != null ? pls.findIndex(x => x.tile.id === UI.anointId) : undefined;
-  const me = st.players[HU];
+  const me = st.players[ME];
   const before = me.goals.map(g => AA.goalScore(st, me, g).pts);
   try {
-    AA.commitMove(st, HU, pls, ai >= 0 ? ai : undefined);
+    AA.commitMove(st, ME, pls, ai >= 0 ? ai : undefined);
   } catch (e) { setStatus(e.message, 'err'); return; }
   me.goals.forEach((g, i) => { const now = AA.goalScore(st, me, g); if (now.pts !== before[i]) AA.log(st, `Your goal ${AA.GOAL[g].name} is now worth ${now.pts} (${now.note}). Only you see this line.`); });
   UI.pending = []; UI.anointId = null;
@@ -584,20 +693,21 @@ async function playWord() {
 function finishHumanTurn() {
   const over = AA.endTurn(UI.st);
   syncRack();
-  if (over || UI.st.over) return endGame();
+  if (over || UI.st.over) { saveOnlineState(); return endGame(); }
+  if (UI.online) { saveOnlineState(); return promptShareLink(); }
   aiTurn();
 }
 async function doExchange() {
-  const p = UI.st.players[HU];
+  const p = UI.st.players[ME];
   const pick = await pickTiles('Exchange tiles', 'Choose rack tiles to swap with the bag. You score nothing this turn. Colored tiles stay with you.', p.rack, 7, false, 'Exchange');
   if (!pick.length) return;
-  AA.exchange(UI.st, HU, pick);
+  AA.exchange(UI.st, ME, pick);
   finishHumanTurn();
 }
 async function playHandCard(id) {
-  const free = UI.st.players[HU].rack.filter(t => !pendingIds().has(t.id)).length;
+  const free = UI.st.players[ME].rack.filter(t => !pendingIds().has(t.id)).length;
   if (id === 'manna' && free < 2) { setStatus('Fresh Manna needs 2 rack tiles that are not on the board. Take some back first.', 'err'); return; }
-  try { await AA.playCard(UI.st, UI.agents, HU, id); }
+  try { await AA.playCard(UI.st, UI.agents, ME, id); }
   catch (e) { setStatus(e.message, 'err'); return; }
   syncRack(); render();
   closeFlyout('hand');
@@ -612,7 +722,7 @@ function renderStatus() {
   el.hidden = false;
   if (statusOverride) { el.textContent = statusOverride.msg; if (statusOverride.kind) el.classList.add(statusOverride.kind); statusOverride = null; return; }
   if (st.over) { el.textContent = 'Game over.'; return; }
-  if (UI.busy || st.turn !== HU) { el.innerHTML = `Claude is thinking <span class="thinking"><i></i><i></i><i></i></span>`; return; }
+  if (UI.busy || st.turn !== ME) { el.innerHTML = UI.online ? `Waiting for ${esc(st.players[1 - ME].name)} to play their turn — send them the latest link.` : `Claude is thinking <span class="thinking"><i></i><i></i><i></i></span>`; return; }
   if (!UI.pending.length) {
     const hints = [];
     if (cur.card) hints.push(`Card played: <b>${esc(AA.CARD[cur.card].name)}</b>.`);
@@ -629,7 +739,7 @@ function renderStatus() {
   const ai = UI.anointId != null ? pls.findIndex(x => x.tile.id === UI.anointId) : undefined;
   const res = AA.scoreMove(st.board, pls.map(x => ({ r: x.r, c: x.c, letter: x.letter, val: AA.tileVal(x) })), { plain: cur.burden === 'plain', anointIdx: ai >= 0 && cur.anoint ? ai : undefined });
   let bonus = '';
-  const p = st.players[HU];
+  const p = st.players[ME];
   if (cur.bonus) {
     const mw = res.main.w; let b = 0;
     if (cur.bonus === 'blessed') b = 10;
@@ -645,12 +755,12 @@ function renderStatus() {
 // ---------- render ----------
 function render() {
   const st = UI.st; if (!st) return;
-  const p = st.players[HU], ai = st.players[AI], cur = st.cur || {};
-  const myTurn = st.turn === HU && !UI.busy && !st.over;
+  const p = st.players[ME], opp = st.players[1 - ME], cur = st.cur || {};
+  const myTurn = st.turn === ME && !UI.busy && !st.over;
   // scores
   $('#scores').innerHTML = st.players.map(x => `<div class="plaque ${st.turn === x.idx && !st.over ? 'active' : ''}">
     <span class="swatch" style="background:var(--p-${x.color})"></span>
-    <span class="who">${esc(x.name)} <span class="halos" title="Card plays used (Halos)">${[0,1,2,3,4].map(i => `<i class="${i < x.plays ? 'used' : ''}"></i>`).join('')}</span>
+    <span class="who">${esc(x.name)}${UI.online && x.idx === ME ? ' (you)' : ''} <span class="halos" title="Card plays used (Halos)">${[0,1,2,3,4].map(i => `<i class="${i < x.plays ? 'used' : ''}"></i>`).join('')}</span>
       ${x.burden ? `<span class="chip">${burdenName(x.burden)} next turn</span>` : ''}</span>
     <span class="tot">${AA.total(x)}</span>
     <span class="sub">board ${x.score} · cards ${x.extras >= 0 ? '+' : ''}${x.extras}</span></div>`).join('');
@@ -705,12 +815,16 @@ function render() {
   }).join('') || '<span class="counts">No cards in hand.</span>';
   // goals
   $('#goals').innerHTML = p.goals.map(g => { const gs = AA.goalScore(st, p, g); return `<div class="goal"><span class="gn">${esc(AA.GOAL[g].name)}<span class="pts">${gs.pts} now</span></span><span class="gt">${esc(AA.GOAL[g].text)}</span><span class="gp">${esc(gs.note)}</span></div>`; }).join('');
-  if (p.known[AI]) $('#goals').insertAdjacentHTML('beforeend', `<div class="goal" style="background:var(--evil-soft)"><span class="gn">Claude’s goals (False Prophet)</span><span class="gt">${p.known[AI].map(g => esc(AA.GOAL[g].name)).join(' · ')}</span><span class="gp">As of when you looked.</span></div>`);
+  if (p.known[1 - ME]) $('#goals').insertAdjacentHTML('beforeend', `<div class="goal" style="background:var(--evil-soft)"><span class="gn">${esc(opp.name)}’s goals (False Prophet)</span><span class="gt">${p.known[1 - ME].map(g => esc(AA.GOAL[g].name)).join(' · ')}</span><span class="gp">As of when you looked.</span></div>`);
   $('#handLbl').textContent = `Hand (${p.cards.length})`;
   $('#goalsLbl').textContent = `Goals (${p.goals.length})`;
   // ai hand backs
-  $('#aiHand').innerHTML = ai.cards.map(id => `<span class="cardback ${AA.CARD[id].side}" title="${AA.CARD[id].side === 'N' ? 'Nice' : 'Evil'} card back">${AA.CARD[id].side === 'N' ? 'N' : 'E'}</span>`).join('') + `<span class="counts" style="margin-left:6px">${ai.cards.length} cards · ${ai.supply.length} colored tiles left · ${ai.rack.length} on rack</span>`;
-  $('#aiNote').textContent = ({ casual: 'Casual', family: 'Family', expert: 'Expert' })[UI.aiLevel] + ' level';
+  $('#aiHand').innerHTML = opp.cards.map(id => `<span class="cardback ${AA.CARD[id].side}" title="${AA.CARD[id].side === 'N' ? 'Nice' : 'Evil'} card back">${AA.CARD[id].side === 'N' ? 'N' : 'E'}</span>`).join('') + `<span class="counts" style="margin-left:6px">${opp.cards.length} cards · ${opp.supply.length} colored tiles left · ${opp.rack.length} on rack</span>`;
+  $('#aiNote').textContent = UI.online ? 'playing on another device' : ({ casual: 'Casual', family: 'Family', expert: 'Expert' })[UI.aiLevel] + ' level';
+  const oppLabel = UI.online ? opp.name : 'Claude';
+  $('#openInfo').textContent = oppLabel + ' & log';
+  $('#infoTitle').textContent = oppLabel + ' & table log';
+  $('#oppTitle').textContent = oppLabel;
   // counts + log
   $('#counts').innerHTML = `<span>Bag <b>${st.bag.length}</b></span><span>Out of game <b>${st.out.length}</b></span><span>Action deck <b>${st.deck.length}</b></span><span>Goal deck <b>${st.goalDeck.length}</b></span>`;
   $('#log').innerHTML = st.log.slice(-60).map(e => `<div>${e.who != null ? `<b>${esc(st.players[e.who].name)}</b> ` : ''}${esc(e.msg)}</div>`).reverse().join('');
@@ -765,7 +879,7 @@ const burdenText = b => ({ norider: 'Lead Weight: you cannot play a scoring bonu
 
 // ---------- drag and drop ----------
 const drag = { src: null, active: false, ghost: null, over: null, justDragged: false };
-function canAct() { const st = UI.st; return st && st.turn === HU && !UI.busy && !st.over && !document.querySelector('.scrim'); }
+function canAct() { const st = UI.st; return st && st.turn === ME && !UI.busy && !st.over && !document.querySelector('.scrim'); }
 document.addEventListener('pointerdown', e => {
   if (!canAct() || e.button > 0) return;
   const rt = e.target.closest('#rack .rtile');
@@ -783,7 +897,7 @@ document.addEventListener('pointermove', e => {
   if (!drag.active) {
     if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
     drag.active = true;
-    const p = UI.st.players[HU];
+    const p = UI.st.players[ME];
     const t = p.rack.concat(p.supply).find(x => x.id === drag.src.id);
     const g = document.createElement('div'); g.id = 'ghost';
     g.innerHTML = drag.src.pd ? tileHTML(t, { letter: drag.src.pd.letter, blank: t.L === '?', val: AA.tileVal(drag.src.pd) }) : tileHTML(t);
@@ -836,7 +950,7 @@ document.addEventListener('pointercancel', e => endDrag(e, true));
 document.addEventListener('click', e => { if (drag.justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
 
 // ---------- events ----------
-$('#board').addEventListener('click', e => { const s = e.target.closest('.sq'); if (!s || UI.st.turn !== HU || UI.busy || UI.st.over) return; placeAt(+s.dataset.r, +s.dataset.c); });
+$('#board').addEventListener('click', e => { const s = e.target.closest('.sq'); if (!s || UI.st.turn !== ME || UI.busy || UI.st.over) return; placeAt(+s.dataset.r, +s.dataset.c); });
 function rackClick(e) { const b = e.target.closest('.rtile'); if (!b || b.disabled) return; const id = +b.dataset.id; UI.sel = UI.sel === id ? null : id; render(); }
 $('#rack').addEventListener('click', rackClick);
 $('#hand').addEventListener('click', e => { const b = e.target.closest('button[data-card]'); if (b && !b.disabled) playHandCard(b.dataset.card); });
@@ -850,7 +964,7 @@ $('#actions').addEventListener('click', e => {
     case 'aHalo': UI.mode = UI.mode === 'halo' ? null : 'halo'; return render();
     case 'aAnoint': UI.mode = UI.mode === 'anoint' ? null : 'anoint'; return render();
     case 'aExch': return doExchange();
-    case 'aPass': if (!UI.passArm) { UI.passArm = true; return render(); } UI.passArm = false; AA.passTurn(UI.st, HU); return finishHumanTurn();
+    case 'aPass': if (!UI.passArm) { UI.passArm = true; return render(); } UI.passArm = false; AA.passTurn(UI.st, ME); return finishHumanTurn();
     case 'aNew': return startScreen();
   }
 });
@@ -859,12 +973,14 @@ $('#actions').addEventListener('click', e => {
 function endGame() {
   render();
   const st = UI.st;
-  const [a, b] = st.players;
+  if (UI.online) saveOnlineState();
+  const a = st.players[ME], b = st.players[1 - ME];
   const row = (label, f) => `<tr><td>${label}</td><td>${f(a)}</td><td>${f(b)}</td></tr>`;
   const goalCell = (x, i) => { const g = x.final.goals[i]; return g ? `${g.pts}<small>${esc(AA.GOAL[g.id].name)}: ${esc(g.note)}</small>` : ''; };
-  const winner = a.final.total === b.final.total ? 'A tie. It stands.' : (a.final.total > b.final.total ? 'You win.' : 'Claude wins.');
+  const oppName = UI.online ? esc(b.name) : 'Claude';
+  const winner = a.final.total === b.final.total ? 'A tie. It stands.' : (a.final.total > b.final.total ? 'You win.' : `${oppName} wins.`);
   modal(`<h3>${winner}</h3><p>Secret goals revealed and scored.</p>
-    <div class="tablewrap"><table class="endtable"><thead><tr><th></th><th>You</th><th>Claude</th></tr></thead><tbody>
+    <div class="tablewrap"><table class="endtable"><thead><tr><th></th><th>You</th><th>${oppName}</th></tr></thead><tbody>
     ${row('Board score', x => x.final.board)}
     ${row('Leftover rack tiles', x => x.final.rackPen)}
     ${row('Leftover colored tiles', x => x.final.supPen)}
