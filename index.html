@@ -598,7 +598,9 @@ function publishState() {
   trimmed._rev = Date.now();
   UI.st._rev = trimmed._rev;
   saveOnlineState();
-  if (mqttClient && mqttClient.connected) mqttClient.publish(relayTopic(UI.gameId), JSON.stringify({ g: UI.gameId, s: trimmed }), { qos: 1, retain: true });
+  // mqtt.js queues publishes made before the connection finishes and sends
+  // them once it's up, so this doesn't need to wait for a connected client.
+  if (mqttClient) mqttClient.publish(relayTopic(UI.gameId), JSON.stringify({ g: UI.gameId, s: trimmed }), { qos: 1, retain: true });
 }
 function applyIncoming(payload) {
   if (!payload || !payload.s || payload.g !== UI.gameId) return;
