@@ -294,6 +294,7 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
         </div>
         <div class="scores" id="scores"></div>
         <div class="statusbar" id="status"></div>
+        <div class="chip" id="connBadge" hidden style="margin:2px 0 6px"></div>
         <div class="actions" id="actions"></div>
         <div class="quickrow">
           <button class="btn small backbtn" id="openHand"><img class="backicon" src="assets/splash.png" alt=""><span id="handLbl">Hand</span></button>
@@ -333,6 +334,7 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 
 <script src="engine.js"></script>
 <script src="report.js"></script>
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
 <script>
 (() => {
 'use strict';
@@ -479,7 +481,7 @@ async function boot() {
 function startScreen() {
   UI.online = false; UI.gameId = null; ME = HU;
   try { localStorage.removeItem('aa-online'); } catch (e) {}
-  let level = UI.aiLevel, color = UI.youColor, vs = 'ai';
+  let level = UI.aiLevel, color = UI.youColor, vs = 'ai', joining = false;
   modal(`<h3>New game</h3>
     <p>Standard 15×15 board and 100-tile bag, with the Angels and Anagrams v2.2 add-on. Words are checked against a ${AA.dict.count.toLocaleString()}-word list.</p>
     <div><b>Who's playing</b><div class="opt" id="vs" style="margin-top:6px">
@@ -490,17 +492,28 @@ function startScreen() {
       <button class="btn small" data-l="casual" aria-pressed="${level === 'casual'}">Casual: everyday words, loose play</button>
       <button class="btn small" data-l="family" aria-pressed="${level === 'family'}">Family: everyday words, sharp play</button>
       <button class="btn small" data-l="expert" aria-pressed="${level === 'expert'}">Expert: any word in the list</button></div></div>
-    <p id="friendNote" hidden style="font-size:13px;color:var(--muted)">You'll get a link after your first move — send it to your friend so they can open the game on their own phone or computer and take their turn. Keep sending the newest link back and forth. (To keep setup simple, this mode skips the 14-tile "bag burn" and just deals 7 tiles each.)</p>
+    <p id="friendNote" hidden style="font-size:13px;color:var(--muted)">You'll get an invite link to send your friend once, at the start. After that, moves sync automatically — no need to send anything else. (Uses a free public relay, so it's best-effort; if it ever drops, reopening the app reconnects you. This mode also skips the 14-tile "bag burn" and just deals 7 tiles each, to keep setup simple.)</p>
+    <div id="joinWrap" hidden style="font-size:13px;color:var(--muted);margin-top:6px">Already have a code from a friend? <a href="#" id="joinLink">Enter it here</a> instead of starting a new game.</div>
     <div class="actions"><button class="btn primary" id="go">Deal the tiles</button></div>`, (m, done) => {
     m.querySelectorAll('#vs button').forEach(b => b.addEventListener('click', () => {
       vs = b.dataset.v; m.querySelectorAll('#vs button').forEach(x => x.setAttribute('aria-pressed', x === b));
       m.querySelector('#lvlWrap').hidden = vs === 'friend'; m.querySelector('#friendNote').hidden = vs !== 'friend';
+      m.querySelector('#joinWrap').hidden = vs !== 'friend';
       m.querySelector('#go').textContent = vs === 'friend' ? 'Start' : 'Deal the tiles';
     }));
     m.querySelectorAll('#col button').forEach(b => b.addEventListener('click', () => { color = b.dataset.c; m.querySelectorAll('#col button').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
     m.querySelectorAll('#lvl button').forEach(b => b.addEventListener('click', () => { level = b.dataset.l; m.querySelectorAll('#lvl button').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
     m.querySelector('#go').addEventListener('click', () => done());
-  }).then(() => vs === 'friend' ? newFriendGame(color) : newGame(level, color));
+    m.querySelector('#joinLink').addEventListener('click', async e => {
+      e.preventDefault();
+      const code = (prompt('Paste the code or link your friend sent you:') || '').trim();
+      if (!code) return;
+      const idx = code.indexOf('#j=');
+      const gameId = idx >= 0 ? code.slice(idx + 3) : code;
+      if (!gameId) return;
+      joining = true; done(); await joinFriendGame(gameId);
+    });
+  }).then(() => { if (joining) return; return vs === 'friend' ? newFriendGame(color) : newGame(level, color); });
 }
 async function newGame(level, color) {
   UI.aiLevel = level; UI.youColor = color;
@@ -541,18 +554,71 @@ function syncRack() {
   UI.rackOrder = UI.rackOrder.filter(id => ids.includes(id)).concat(ids.filter(id => !UI.rackOrder.includes(id)));
 }
 
-// ---------- vs a friend (2 devices, no server) ----------
-// The whole game state travels in the URL's #g= fragment (fragments never hit
-// a server, so this works fine on plain static hosting). Whoever just moved
-// copies a fresh link and sends it to the other player any way they like
-// (text, email, etc.); opening it hands play to the other device.
+// ---------- vs a friend (2 devices, live sync, no account) ----------
+// Both devices connect to a free public message relay (HiveMQ's public
+// broker — no signup, no server of our own) and share one "topic" named
+// after the game. Whoever moves publishes the new state; the other device
+// is subscribed to that topic and gets it pushed automatically, so there's
+// no re-opening a link after every turn — just once, at the start, to join.
+// It's a best-effort public service (no guarantees), so we also save to
+// this device's own storage as a backstop and show a small connection dot.
 function freshRng() { let seed = (Date.now() ^ Math.floor(Math.random() * 2 ** 31)) >>> 0; return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; }
+const RELAY_URL = 'wss://broker.hivemq.com:8884/mqtt';
+function relayTopic(gameId) { return 'angelsanagrams/v1/' + gameId; }
+let mqttClient = null;
+function setConn(state) {
+  UI.connState = state;
+  const el = $('#connBadge'); if (!el) return;
+  if (!UI.online) { el.hidden = true; return; }
+  el.hidden = false;
+  const label = { live: '● Live — moves sync automatically', connecting: '○ Connecting…', reconnecting: '○ Reconnecting…', offline: '○ Offline — will catch up when reconnected' }[state] || '';
+  el.textContent = label;
+  el.style.color = state === 'live' ? 'var(--nice, #2a8)' : 'var(--muted)';
+}
+function connectRelay(gameId) {
+  if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; }
+  if (typeof mqtt === 'undefined') { setConn('offline'); return; }
+  setConn('connecting');
+  const client = mqtt.connect(RELAY_URL, { reconnectPeriod: 2000, connectTimeout: 8000, clientId: 'aa-' + Math.random().toString(36).slice(2, 10) });
+  mqttClient = client;
+  client.on('connect', () => { if (client !== mqttClient) return; setConn('live'); client.subscribe(relayTopic(gameId), { qos: 1 }); });
+  client.on('reconnect', () => { if (client !== mqttClient) return; setConn('reconnecting'); });
+  client.on('close', () => { if (client !== mqttClient) return; setConn('offline'); });
+  client.on('error', () => { if (client !== mqttClient) return; setConn('offline'); });
+  client.on('message', (topic, buf) => {
+    if (client !== mqttClient) return;
+    try { applyIncoming(JSON.parse(buf.toString())); } catch (e) {}
+  });
+}
+function publishState() {
+  if (!UI.online || !UI.st) return;
+  const trimmed = JSON.parse(JSON.stringify(UI.st));
+  delete trimmed.rng;
+  trimmed.log = trimmed.log.slice(-30);
+  trimmed._rev = Date.now();
+  UI.st._rev = trimmed._rev;
+  saveOnlineState();
+  if (mqttClient && mqttClient.connected) mqttClient.publish(relayTopic(UI.gameId), JSON.stringify({ g: UI.gameId, s: trimmed }), { qos: 1, retain: true });
+}
+function applyIncoming(payload) {
+  if (!payload || !payload.s || payload.g !== UI.gameId) return;
+  const incoming = payload.s;
+  if (UI.st && UI.st._rev != null && incoming._rev != null && incoming._rev <= UI.st._rev) return; // our own echo or a stale message
+  incoming.rng = freshRng();
+  UI.st = incoming;
+  UI.rackOrder = incoming.players[ME].rack.concat(incoming.players[ME].supply).map(t => t.id);
+  UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null; UI.passArm = false; UI.busy = false;
+  if (!incoming.over && (!incoming.cur || incoming.cur.p !== incoming.turn)) AA.beginTurn(incoming);
+  saveOnlineState();
+  if (incoming.over) return endGame();
+  render();
+}
 async function newFriendGame(color) {
   UI.youColor = color;
   const friendColor = color === 'gold' ? 'red' : 'gold';
   const st = AA.newGame({ addon: true, players: [{ name: 'Player 1', color, human: true }, { name: 'Player 2', color: friendColor, human: true }] });
   await AA.dealRacks(st, (p, tiles, n) => tiles.slice(0, n));
-  UI.st = st; UI.online = true; ME = HU; UI.gameId = Math.random().toString(36).slice(2, 8);
+  UI.st = st; UI.online = true; ME = HU; UI.gameId = Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 6);
   UI.agents = [humanAgent, remoteAutoAgent];
   UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null;
   UI.rackOrder = st.players[ME].rack.concat(st.players[ME].supply).map(t => t.id);
@@ -560,69 +626,73 @@ async function newFriendGame(color) {
   st.turn = ME;
   AA.log(st, 'You go first.');
   startHumanTurn();
-  saveOnlineState();
-  promptShareLink('Send this link to your friend so they can join and see the board.');
+  connectRelay(UI.gameId);
+  publishState();
+  await promptInvite();
 }
-function encodeState() {
-  const trimmed = JSON.parse(JSON.stringify(UI.st));
-  delete trimmed.rng;
-  trimmed.log = trimmed.log.slice(-20);
-  return { s: trimmed, t: 1 - ME, g: UI.gameId };
+async function joinFriendGame(gameId) {
+  UI.online = true; ME = AI; UI.gameId = gameId;
+  UI.agents = [remoteAutoAgent, humanAgent];
+  UI.st = null;
+  $('#game').hidden = false;
+  $('#loading').hidden = true;
+  const st = $('#status'); st.hidden = false; st.className = 'statusbar'; st.textContent = 'Connecting to your friend’s game…';
+  connectRelay(gameId);
+  render();
 }
-function shareUrl() {
-  const json = JSON.stringify(encodeState());
-  const b64 = btoa(unescape(encodeURIComponent(json)));
-  return location.origin + location.pathname + '#g=' + b64;
-}
-async function promptShareLink(introText) {
-  const url = shareUrl();
-  await modal(`<h3>Your turn is done</h3><p>${esc(introText || "Send this link to your friend for their turn. You'll get a new link to send back after each move.")}</p>
+function inviteUrl() { return location.origin + location.pathname + '#j=' + UI.gameId; }
+async function promptInvite() {
+  const url = inviteUrl();
+  await modal(`<h3>Invite your friend</h3><p>Send this link — once they open it on their own phone or computer, moves will sync automatically on both sides. No need to send anything after that.</p>
     <input id="lnk" readonly value="${esc(url)}" style="width:100%;font-size:12px;padding:8px;border:1px solid var(--line);border-radius:6px;margin:8px 0;box-sizing:border-box">
     <div class="actions">${navigator.share ? '<button class="btn primary" id="sh">Share…</button>' : ''}<button class="btn" id="cp">Copy link</button><button class="btn" id="ok">Done</button></div>`, (m, done) => {
     const input = m.querySelector('#lnk');
     input.addEventListener('click', () => input.select());
     m.querySelector('#cp').addEventListener('click', async () => { try { await navigator.clipboard.writeText(url); m.querySelector('#cp').textContent = 'Copied!'; } catch (e) { input.select(); } });
-    const sh = m.querySelector('#sh'); if (sh) sh.addEventListener('click', () => navigator.share({ title: 'Angels and Anagrams — your turn', url }).catch(() => {}));
+    const sh = m.querySelector('#sh'); if (sh) sh.addEventListener('click', () => navigator.share({ title: 'Angels and Anagrams — join my game', url }).catch(() => {}));
     m.querySelector('#ok').addEventListener('click', () => done());
   });
   render();
 }
 function saveOnlineState() {
-  if (!UI.online) return;
+  if (!UI.online || !UI.st) return;
   try {
     const trimmed = JSON.parse(JSON.stringify(UI.st));
     delete trimmed.rng;
-    localStorage.setItem('aa-online', JSON.stringify({ s: trimmed, t: ME, g: UI.gameId, youColor: UI.youColor }));
+    localStorage.setItem('aa-online', JSON.stringify({ s: trimmed, me: ME, g: UI.gameId, youColor: UI.youColor }));
   } catch (e) {}
 }
-function loadOnlinePayload(payload) {
-  const st = payload.s;
+async function tryResumeOnline() {
+  const hash = location.hash;
+  if (hash.startsWith('#j=')) {
+    const gameId = hash.slice(3);
+    history.replaceState(null, '', location.pathname);
+    // if we already have local progress in this exact game, resume it instead of rejoining blank
+    try {
+      const raw = localStorage.getItem('aa-online');
+      if (raw) { const saved = JSON.parse(raw); if (saved.g === gameId) { resumeSavedOnline(saved); return true; } }
+    } catch (e) {}
+    await joinFriendGame(gameId);
+    return true;
+  }
+  try {
+    const raw = localStorage.getItem('aa-online');
+    if (raw) { resumeSavedOnline(JSON.parse(raw)); return true; }
+  } catch (e) {}
+  return false;
+}
+function resumeSavedOnline(saved) {
+  const st = saved.s;
   st.rng = freshRng();
-  UI.st = st; UI.online = true; ME = payload.t; UI.gameId = payload.g;
-  UI.youColor = st.players[ME] ? st.players[ME].color : UI.youColor;
+  UI.st = st; UI.online = true; ME = saved.me; UI.gameId = saved.g;
+  UI.youColor = saved.youColor || (st.players[ME] && st.players[ME].color) || UI.youColor;
   UI.agents = [null, null]; UI.agents[ME] = humanAgent; UI.agents[1 - ME] = remoteAutoAgent;
   UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null; UI.passArm = false;
   UI.rackOrder = st.players[ME].rack.concat(st.players[ME].supply).map(t => t.id);
   $('#game').hidden = false;
   if (!st.over && (!st.cur || st.cur.p !== st.turn)) AA.beginTurn(st);
-  saveOnlineState();
+  connectRelay(UI.gameId);
   render();
-}
-async function tryResumeOnline() {
-  const hash = location.hash;
-  if (hash.startsWith('#g=')) {
-    try {
-      const payload = JSON.parse(decodeURIComponent(escape(atob(hash.slice(3)))));
-      history.replaceState(null, '', location.pathname);
-      loadOnlinePayload(payload);
-      return true;
-    } catch (e) { /* fall through to local resume */ }
-  }
-  try {
-    const raw = localStorage.getItem('aa-online');
-    if (raw) { loadOnlinePayload(JSON.parse(raw)); return true; }
-  } catch (e) {}
-  return false;
 }
 
 // ---------- human actions ----------
@@ -693,8 +763,8 @@ async function playWord() {
 function finishHumanTurn() {
   const over = AA.endTurn(UI.st);
   syncRack();
-  if (over || UI.st.over) { saveOnlineState(); return endGame(); }
-  if (UI.online) { saveOnlineState(); return promptShareLink(); }
+  if (UI.online) { publishState(); if (over || UI.st.over) return endGame(); return render(); }
+  if (over || UI.st.over) return endGame();
   aiTurn();
 }
 async function doExchange() {
@@ -722,7 +792,7 @@ function renderStatus() {
   el.hidden = false;
   if (statusOverride) { el.textContent = statusOverride.msg; if (statusOverride.kind) el.classList.add(statusOverride.kind); statusOverride = null; return; }
   if (st.over) { el.textContent = 'Game over.'; return; }
-  if (UI.busy || st.turn !== ME) { el.innerHTML = UI.online ? `Waiting for ${esc(st.players[1 - ME].name)} to play their turn — send them the latest link.` : `Claude is thinking <span class="thinking"><i></i><i></i><i></i></span>`; return; }
+  if (UI.busy || st.turn !== ME) { el.innerHTML = UI.online ? `Waiting for ${esc(st.players[1 - ME].name)} to play their turn. This will update on its own.` : `Claude is thinking <span class="thinking"><i></i><i></i><i></i></span>`; return; }
   if (!UI.pending.length) {
     const hints = [];
     if (cur.card) hints.push(`Card played: <b>${esc(AA.CARD[cur.card].name)}</b>.`);
