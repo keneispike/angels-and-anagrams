@@ -62,7 +62,9 @@ nav.tabs.menu{position:absolute;right:0;top:calc(100% + 6px);flex-direction:colu
 nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12px}
 .mailLink{font-size:13px;color:var(--nice);text-decoration:underline;font-weight:600}
 .mailLink:hover{color:var(--ink)}
-@media (max-width:700px){.mailLink{font-size:11px}}
+.fbWrap{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fbLabel{background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);border-radius:6px;padding:1px 7px;font-size:13px;font-weight:800}
+@media (max-width:700px){.mailLink{font-size:11px}.fbLabel{font-size:11px;padding:0 5px}}
 
 /* scoreboard */
 .scores{display:flex;flex-direction:column;gap:4px}
@@ -274,8 +276,8 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
   <header class="top">
     <div class="brand">
       <h1>Angels <span class="amp">&amp;</span> Anagrams</h1>
-      <span class="motto">v2.3 candidate playtest table · two angels, one board, five Halos each</span>
-      <a class="mailLink" href="mailto:chief@mail.grokbot.com?subject=Angels%20feedback">chief@mail.grokbot.com</a>
+      <span class="motto">Beta: v2.3 · two angels, one board, five Halos each</span>
+      <span class="fbWrap"><span class="fbLabel">Feedback:</span> <a class="mailLink" href="mailto:chief@mail.grokbot.com?subject=Angels%20feedback">chief@mail.grokbot.com</a></span>
     </div>
     <div class="menuWrap">
       <button class="hamburger" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Help menu">Help</button>
