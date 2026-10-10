@@ -83,7 +83,7 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 
 /* layout */
 #game{display:flex;flex-direction:column;gap:6px}
-.table{display:grid;grid-template-columns:minmax(0,1fr) 190px;grid-template-areas:"board scores" "board status" "board actions" "board quick" "tray tray";gap:8px 10px;align-items:start}
+.table{display:grid;grid-template-columns:minmax(0,1fr) 190px;grid-template-areas:"board scores" "board status" "board actions" "board quick" "tray .";gap:8px 10px;align-items:start}
 @media (max-width:700px){.table{grid-template-columns:1fr;grid-template-areas:"scores" "board" "tray" "status" "actions" "quick";gap:4px}}
 .boardcol{grid-area:board;display:flex;flex-direction:column;gap:6px;min-width:0}
 .scores{grid-area:scores}
