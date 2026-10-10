@@ -1,4 +1,4 @@
-/* Angels and Anagrams v2.2 - game engine (base crossword-tile rules + add-on). No DOM. */
+/* Angels and Anagrams v2.3 - game engine (base crossword-tile rules + add-on). No DOM. */
 (function (G) {
   'use strict';
   const VALUES = { A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10,'?':0 };
@@ -18,38 +18,110 @@
     { id:'blessed', name:'Blessed Bonus', side:'N', qty:2, bonus:true, text:'After you score this turn, add +8. Your one scoring bonus.' },
     { id:'facesum', name:'Face Sum', side:'N', qty:2, bonus:true, text:'After scoring, gain the face-value sum of your main word (ignore premiums and crosswords). Minimum +5.' },
     { id:'rainbow', name:'Rainbow Seal', side:'N', qty:2, bonus:true, text:'If you place 2+ of your colored tiles this turn, add +15 after scoring.' },
-    { id:'sacred', name:'Sacred Pattern', side:'N', qty:0, bonus:true, text:'CUT (v2.3, iteration 2): 0% fizzle in 82 plays, a flat +8 disguised as a condition.' },
     { id:'haloblank', name:'Halo Blank', side:'N', qty:2, text:'One tile you play this turn counts as any letter. Its face value is 0.' },
     { id:'manna', name:'Fresh Manna', side:'N', qty:2, text:'Return 2 rack tiles to the bag (not colored tiles), then draw 2.' },
     { id:'jubilee', name:'Jubilee', side:'N', qty:1, text:'Each other player may return up to 2 rack tiles and redraw. You may return up to 3.' },
     { id:'covenant', name:'New Covenant', side:'N', qty:2, text:'Bury one of your secret goals under the goal deck and draw a new one blind.' },
     { id:'secondsight', name:'Second Sight', side:'N', qty:2, text:'Bury one of your secret goals. Draw the top 2 goals, keep one, bury the other under the goal deck.' },
+    { id:'guardian', name:'Guardian Angel', side:'N', qty:2, text:'Cancel the next Evil played on you. It stays in front of you until an Evil targets you; the cancel does not use a Halo.' },
     { id:'passhalo', name:'Pass the Halo', side:'N', qty:1, text:'2 players: swap one hand card with your opponent, if you both have one.' },
     { id:'anoint', name:'Anoint', side:'N', qty:1, text:'One tile you play this turn scores face +2 before premiums (a blank stays 0). Total gain from Anoint is capped at +9. Not a scoring bonus.' },
-    { id:'lead', name:'Lead Weight', side:'E', qty:2, target:true, text:'Choose a player. On their next turn they cannot play a scoring bonus.' },
-    { id:'temptation', name:'Tiny Temptation', side:'E', qty:1, target:true, text:'Choose a player. They lose 10 (not below 0) and you gain 10.' },
-    { id:'fog', name:'Fog the Path', side:'E', qty:1, target:true, text:'Choose a player. On their next turn, premium squares count as plain.' },
+    { id:'temptation', name:'Tiny Temptation', side:'E', qty:2, target:true, text:'Choose a player. They lose 10 (not below 0) and you gain 10. Happens right away.' },
+    { id:'fog', name:'Fog the Path', side:'E', qty:2, target:true, text:'Choose a player. On their next turn, premium squares count as plain.' },
     { id:'ironrod', name:'Iron Rod', side:'E', qty:1, target:true, text:'Choose a player. On their next turn they cannot place colored tiles.' },
-    { id:'shortrope', name:'Short Rope', side:'E', qty:1, target:true, text:'Choose a player. On their next turn they may place at most 4 tiles.' },
-    { id:'scapegoat', name:'Scapegoat', side:'E', qty:0, text:'CUT (per designer direction): removed from the deck entirely.' },
-    { id:'mirror', name:'Mirror', side:'E', qty:1, text:'Copy the most recent non-Mirror Evil played this game. If none, it fizzles.' },
-    { id:'taxcollector', name:'Tax Collector', side:'E', qty:1, target:true, text:'Choose a player. If they score 30+ on their next turn, you gain 10.' },
+    { id:'tithe', name:'Tithe', side:'E', qty:2, target:true, text:'Choose a player. On their next turn they may place at most 4 tiles.' },
+    { id:'castout', name:'Cast Out', side:'E', qty:1, target:true, text:'Choose a player. They return all their non-colored rack tiles to the bag and draw fresh. Happens right away.' },
+    { id:'lostturn', name:'Lost Turn', side:'E', qty:1, target:true, text:'Choose a player. On their next turn they can only exchange tiles. No scoring.' },
+    { id:'cain', name:'Mark of Cain', side:'E', qty:1, target:true, text:'Choose a player. On their next turn, you gain half of what they score (rounded down).' },
+    { id:'curse', name:'Curse of Silence', side:'E', qty:1, target:true, text:'Choose a player. On their next turn, their board score is halved (rounded down), before any bonus.' },
   ];
   const CARD = Object.fromEntries(CARDS.map(c => [c.id, c]));
   const GOALS = [
-    { id:'firstink', name:'First Ink', qty:0, text:'CUT (v2.3, iteration 2): always hit 100% of the time, no real decision. +10 if you placed at least one colored tile on your first scoring turn.' },
-    { id:'five', name:'Five-Letter Harvest', qty:1, text:'+12 for each 5-letter main word you scored.' },
-    { id:'six', name:'Six Pack', qty:3, text:'+15 for each 6-letter main word you scored.' },
-    { id:'chain', name:'Color Chain', qty:2, text:'+15 per adjacent pair of your colored tiles in the same word (final board).' },
-    { id:'scatter', name:'Scatter', qty:2, text:'+12 per distinct board word containing 1+ of your colored tiles. Cap +45.' },
+    { id:'five', name:'Five-Letter Harvest', qty:1, text:'+5 for each 5-letter main word you scored. No cap.' },
+    { id:'six', name:'Six Pack', qty:3, text:'+15 for each 6-letter main word you scored. Cap +45.' },
+    { id:'chain', name:'Color Chain', qty:2, text:'+10 per adjacent pair of your colored tiles in the same word (final board). No cap.' },
+    { id:'scatter', name:'Scatter', qty:2, text:'+5 per distinct board word containing 1+ of your colored tiles. No cap.' },
     { id:'miracle', name:'Miracle Blank', qty:1, text:'+25 if your colored blank completed a word of 7+ letters.' },
     { id:'corner', name:'Cornerstone', qty:2, text:'+25 if your colored blank ends the game on a premium square.' },
-    { id:'creature', name:'Creature Comforts', qty:2, text:'+20 per animal/bird/fish/insect main word from the list. Cap +40.' },
-    { id:'counting', name:'Counting Sheep', qty:2, text:'+20 per number-word main word from the list (includes ordinals).' },
+    { id:'creature', name:'Creature Comforts', qty:2, text:'+20 per animal/bird/fish/insect main word from the list. No cap.' },
+    { id:'counting', name:'Counting Sheep', qty:2, text:'+30 per number-word main word from the list (includes ordinals).' },
     { id:'sameends', name:'Same Ends', qty:2, text:'+25 if you scored 2+ main words that start and end with the same letter.' },
-    { id:'open', name:'Open Word', qty:2, text:'+15 per main word of 6+ letters. Cap +40.' },
+    { id:'gilded', name:'Gilded Tiles', qty:1, text:'+10 per colored tile of yours on a premium square at game end (the center star counts). No cap.' },
+    { id:'cross', name:'Crossroads', qty:1, text:'+10 per colored tile of yours that sits in two words at once (final board).' },
+    { id:'neighbors', name:'Neighbors', qty:1, text:'+8 per colored tile of yours touching another player\'s colored tile (side by side, not diagonal).' },
+    { id:'corners4', name:'Four Corners', qty:1, text:'+30 if you have a colored tile in each of the four corner areas of the board (the center row and column belong to none).' },
   ];
   const GOAL = Object.fromEntries(GOALS.map(g => [g.id, g]));
+
+  // ---------- shared (public) goals ----------
+  // Two are revealed at setup. Ranked ones pay 1st +30 / 2nd +12 (ties split, rounded down; you need at least 1).
+  // Palindrome Parade is a race: the first player to play one claims +25.
+  const RANK_PRIZES = [30, 12], PALIN_PRIZE = 25;
+  const RHYME_ENDINGS = { ING: /ING$/, ED: /ED$/, ER: /ER$/, AT: /[AIOU]T$/ };
+  const RHYME_LABEL = { ING: '-ING', ED: '-ED', ER: '-ER', AT: '-AT / -IT / -OT / -UT' };
+  const FIRST_LETTERS = ['S', 'T', 'C', 'B', 'P', 'M', 'D', 'R'];
+  const PUBLIC = [
+    { id:'longest', name:'Longest Word', text:'Longest main word you played.' },
+    { id:'bigturn', name:'Biggest Turn', text:'Highest board score in a single turn.' },
+    { id:'gentle', name:'Gentle Hand', text:'Most Nice cards played.' },
+    { id:'palin', name:'Palindrome Parade', race:true, text:'First player to play a palindrome main word (3+ letters, like MOM or LEVEL) claims +25.' },
+    { id:'opendoor', name:'Open Door', text:'Most main words that start with a vowel.' },
+    { id:'double', name:'Double Trouble', text:'Most main words with a double letter (BALL, SEEN).' },
+    { id:'rhyme', name:'Rhyme Time', variants:Object.keys(RHYME_ENDINGS), text:'Most main words that end the way the card says (by spelling).' },
+    { id:'prefix', name:'Prefix Party', text:'Most main words that start with RE, UN or DE.' },
+    { id:'firstletter', name:'First Letter', variants:FIRST_LETTERS, text:'Most main words that start with the letter on the card.' },
+  ];
+  const PUBLIC_BY_ID = Object.fromEntries(PUBLIC.map(g => [g.id, g]));
+  const RANK_NOTE = ' Ranked at game end: 1st +30, 2nd +12. Ties split and round down. You need at least 1 to score.';
+  function makePublic(def, rng) {
+    const arg = def.variants ? def.variants[Math.floor(rng() * def.variants.length)] : null;
+    const name = def.id === 'rhyme' ? `Rhyme Time (${RHYME_LABEL[arg]})` : def.id === 'firstletter' ? `First Letter (${arg})` : def.name;
+    const text = def.id === 'rhyme' ? `Most main words ending in ${RHYME_LABEL[arg]} (by spelling).` : def.id === 'firstletter' ? `Most main words that start with ${arg}.` : def.text;
+    return { id: def.id, arg, name, race: !!def.race, text: text + (def.race ? '' : RANK_NOTE) };
+  }
+  const isPalin = w => w.length >= 3 && w === [...w].reverse().join('');
+  function matchWord(pg, w) {
+    switch (pg.id) {
+      case 'opendoor': return /^[AEIOU]/.test(w);
+      case 'double': return /(.)\1/.test(w);
+      case 'rhyme': return RHYME_ENDINGS[pg.arg].test(w);
+      case 'prefix': return /^(RE|UN|DE)/.test(w);
+      case 'firstletter': return w[0] === pg.arg;
+    }
+    return false;
+  }
+  function publicValue(st, p, pg) {
+    const mains = p.mains.map(m => m.w);
+    switch (pg.id) {
+      case 'longest': return mains.reduce((a, w) => Math.max(a, w.length), 0);
+      case 'bigturn': return p.bestTurn || 0;
+      case 'gentle': return p.niceCount || 0;
+      case 'palin': return st.palClaim === p.idx ? 1 : 0;
+      default: return mains.filter(w => matchWord(pg, w)).length;
+    }
+  }
+  function awardRanked(vals) {
+    const idx = vals.map((v, i) => i).filter(i => vals[i] > 0).sort((a, b) => vals[b] - vals[a]);
+    const pts = vals.map(() => 0);
+    let pos = 0;
+    while (pos < idx.length) {
+      let e = pos; while (e + 1 < idx.length && vals[idx[e + 1]] === vals[idx[pos]]) e++;
+      const k = e - pos + 1; let sum = 0;
+      for (let q = pos; q <= e; q++) sum += RANK_PRIZES[q] || 0;
+      const each = Math.floor(sum / k);
+      for (let q = pos; q <= e; q++) pts[idx[q]] = each;
+      pos = e + 1;
+    }
+    return pts;
+  }
+  // live or final standing for every shared goal: [{goal, vals:[per player], pts:[per player]}]
+  function publicStanding(st) {
+    return (st.publicGoals || []).map(pg => {
+      const vals = st.players.map(p => publicValue(st, p, pg));
+      const pts = pg.race ? vals.map(v => v ? PALIN_PRIZE : 0) : awardRanked(vals);
+      return { goal: pg, vals, pts };
+    });
+  }
   const CREATURES = new Set('ANT APE BAT BEAR BOAR BULL CAT COW CUB DEER DOG ELK FOX GOAT HARE HORSE LAMB LION MICE MOLE MOOSE MOUSE MULE OX PIG RAT SEAL SHEEP SOW STAG TIGER WOLF YAK ZEBRA CROW DOVE DUCK EAGLE FINCH GOOSE GULL HAWK HEN LARK OWL RAVEN ROBIN SWAN WREN CARP COD CRAB EEL FISH PERCH PIKE RAY SHARK SOLE TROUT TUNA BEE BUG FLEA FLY GNAT MOTH WASP'.split(' '));
   const NUMBERS = new Set('ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE TEN ELEVEN TWELVE THIRTEEN FOURTEEN FIFTEEN SIXTEEN SEVENTEEN EIGHTEEN NINETEEN TWENTY THIRTY FORTY FIFTY SIXTY SEVENTY EIGHTY NINETY HUNDRED THOUSAND ZERO DOZEN SCORE FIRST SECOND THIRD FOURTH FIFTH SIXTH SEVENTH EIGHTH NINTH TENTH ELEVENTH TWELFTH'.split(' '));
   const isCreature = w => CREATURES.has(w) || (w.endsWith('S') && CREATURES.has(w.slice(0, -1))) || (w.endsWith('ES') && CREATURES.has(w.slice(0, -2))) || w === 'GEESE' || w === 'OXEN' || w === 'WOLVES';
@@ -119,15 +191,15 @@
     const players = opts.players.map((p, i) => ({
       idx: i, name: p.name, color: p.color, human: !!p.human, level: p.level || 'expert',
       rack: [], supply: [], colorReserve: [],
-      score: 0, extras: 0, cards: [], plays: 0, goals: [], burden: null, scapegoat: false,
-      firstScored: false, firstInk: false, miracle: false, mains: [], lastTurnEvil: false, taxWatcher: null,
-      known: {}, stats: { cardGains: [], evilHits: 0 },
+      score: 0, extras: 0, cards: [], plays: 0, goals: [], burden: null, burdenBy: null, guardian: false,
+      firstScored: false, firstInk: false, miracle: false, mains: [], lastTurnEvil: false,
+      known: {}, stats: { cardGains: [], evilHits: 0 }, bestTurn: 0, niceCount: 0,
     }));
     const st = {
       rng, addon, board: Array.from({ length: N }, () => Array(N).fill(null)), bag, out: [], players,
       deck: [], discard: [], goalDeck: [], turn: 0, turnNo: 0, scoreless: 0, lastEvil: null,
       log: [], over: false, cur: null, np: players.length,
-      handMax: players.length === 2 ? 3 : 2, cap: 5,
+      handMax: players.length === 2 ? 3 : 2, cap: 5, publicGoals: [], palClaim: null,
     };
     if (addon) {
       for (const p of players) {
@@ -147,6 +219,7 @@
         while (g === p.goals[0] && guard++ < 40) { st.goalDeck.push(g); g = st.goalDeck.shift(); }
         p.goals.push(g);
       }
+      st.publicGoals = shuffle(PUBLIC.slice(), rng).slice(0, 2).map(d => makePublic(d, rng));
     }
     return st;
   }
@@ -172,7 +245,7 @@
     return st.deck.pop();
   }
   function refillRack(st, p) { while (p.rack.length < 7 && st.bag.length) p.rack.push(st.bag.pop()); }
-  const SUPPLY_CAP = 3;
+  const SUPPLY_CAP = 2;
   function refillSupply(st, p) { while (p.supply.length < SUPPLY_CAP && p.colorReserve && p.colorReserve.length) { const t = p.colorReserve.pop(); p.supply.push(t); log(st, `drew a colored ${t.L === '?' ? 'blank' : t.L} from reserve.`, p.idx); } }
 
   // ---------- scoring ----------
@@ -387,8 +460,8 @@
   // ---------- turn machinery ----------
   function beginTurn(st) {
     const p = st.players[st.turn];
-    const burden = p.burden; p.burden = null;
-    st.cur = { p: p.idx, burden, card: null, halo: false, anoint: false, bonus: null, rackChanged: false, evilThisTurn: false };
+    const burden = p.burden, burdenBy = p.burdenBy; p.burden = null; p.burdenBy = null;
+    st.cur = { p: p.idx, burden, burdenBy, card: null, halo: false, anoint: false, bonus: null, rackChanged: false, evilThisTurn: false };
     st.turnNo++;
     return st.cur;
   }
@@ -397,8 +470,8 @@
     if (!st.addon) return 'No cards in the base game.';
     if (st.cur.card) return 'Only one card per turn.';
     if (p.plays >= st.cap) return 'All 5 Halos are used.';
-    if (c.bonus && st.cur.burden === 'norider') return 'Lead Weight: no scoring bonus this turn.';
     if (c.side === 'E' && st.np === 2 && p.lastTurnEvil) return 'You played an Evil last turn.';
+    if (id === 'guardian' && p.guardian) return 'A Guardian Angel is already watching over you.';
     if (id === 'passhalo' && st.np === 2 && p.cards.length < 2) return 'You need another card to swap.';
     if (id === 'manna' && p.rack.length < 2) return 'Need 2 rack tiles.';
     if (id === 'covenant' && !st.goalDeck.length) return 'Goal deck is empty.';
@@ -416,11 +489,11 @@
     st.discard.push(cardId);
     st.cur.card = cardId;
     const c = CARD[cardId];
+    if (c.side === 'N') p.niceCount++;
     log(st, `played ${c.name}.`, pi);
     const info = { card: cardId, fizzle: false };
     if (c.side === 'E') st.cur.evilThisTurn = true;
     await resolveEffect(st, agents, pi, cardId, info, false);
-    if (c.side === 'E' && cardId !== 'mirror') st.lastEvil = cardId;
     p.stats.cardGains.push(info);
     return info;
   }
@@ -430,7 +503,7 @@
     const c = CARD[id];
     const others = st.players.filter(x => x.idx !== pi);
     switch (id) {
-      case 'blessed': case 'facesum': case 'rainbow': case 'sacred':
+      case 'blessed': case 'facesum': case 'rainbow':
         st.cur.bonus = id; break;
       case 'haloblank': st.cur.halo = true; break;
       case 'anoint': st.cur.anoint = true; break;
@@ -496,22 +569,15 @@
         }
         break;
       }
-      case 'scapegoat': p.scapegoat = true; log(st, `is shielded against the next Evil.`, pi); break;
-      case 'mirror': {
-        if (!st.lastEvil) { info.fizzle = true; log(st, 'Mirror fizzled: no Evil to copy yet.', pi); break; }
-        info.copied = st.lastEvil;
-        log(st, `Mirror copies ${CARD[st.lastEvil].name}.`, pi);
-        await resolveEffect(st, agents, pi, st.lastEvil, info, true);
-        break;
-      }
+      case 'guardian': p.guardian = true; log(st, `has a Guardian Angel watching over them.`, pi); break;
       default: {
         if (!c.target) break;
         let tgt = await agents[pi].decide('target', { st, p, card: id });
         let t = st.players[tgt];
-        if (t.scapegoat) {
-          t.scapegoat = false;
+        if (t.guardian) {
+          t.guardian = false;
           info.fizzle = true;
-          log(st, `Shielded! ${t.name} cancels ${c.name}.`, t.idx);
+          log(st, `Guardian Angel! ${t.name} cancels ${c.name}.`, t.idx);
           break;
         }
         info.target = t.idx;
@@ -520,18 +586,31 @@
       }
     }
   }
+  function setBurden(st, t, pi, kind, msg) {
+    if (t.burden) log(st, `(${t.name}'s earlier burden is replaced.)`);
+    t.burden = kind; t.burdenBy = pi;
+    log(st, msg);
+  }
   function applyEvil(st, agents, pi, t, id, info) {
     const p = st.players[pi];
-    if (id === 'lead') { t.burden = 'norider'; log(st, `Lead Weight: ${t.name} can't use a scoring bonus next turn.`); }
-    if (id === 'fog') { t.burden = 'plain'; log(st, `Fog the Path: premiums go plain for ${t.name} next turn.`); }
-    if (id === 'ironrod') { t.burden = 'nocolors'; log(st, `Iron Rod: ${t.name} can't place colored tiles next turn.`); }
+    if (id === 'fog') setBurden(st, t, pi, 'plain', `Fog the Path: premiums go plain for ${t.name} next turn.`);
+    if (id === 'ironrod') setBurden(st, t, pi, 'nocolors', `Iron Rod: ${t.name} can't place colored tiles next turn.`);
+    if (id === 'tithe') setBurden(st, t, pi, 'maxfour', `Tithe: ${t.name} can place at most 4 tiles next turn.`);
+    if (id === 'lostturn') setBurden(st, t, pi, 'exchange', `Lost Turn: ${t.name} can only exchange tiles next turn.`);
+    if (id === 'cain') setBurden(st, t, pi, 'cain', `Mark of Cain: ${p.name} will gain half of what ${t.name} scores next turn.`);
+    if (id === 'curse') setBurden(st, t, pi, 'half', `Curse of Silence: ${t.name}'s board score is halved next turn.`);
     if (id === 'temptation') {
       const loss = Math.min(10, Math.max(0, total(t)));
       t.extras -= loss; p.extras += 10; info.gain = 10; info.swing = 10 + loss;
       log(st, `Tiny Temptation: ${t.name} lose${t.name === 'You' ? '' : 's'} ${loss}, ${p.name} gain${p.name === 'You' ? '' : 's'} 10.`);
     }
-    if (id === 'shortrope') { t.burden = 'maxfour'; log(st, `Short Rope: ${t.name} can place at most 4 tiles next turn.`); }
-    if (id === 'taxcollector') { t.taxWatcher = pi; log(st, `Tax Collector is watching ${t.name}'s next turn.`); }
+    if (id === 'castout') {
+      const n = Math.min(t.rack.length, st.bag.length);
+      const pick = shuffle(t.rack.slice(), st.rng).slice(0, n);
+      if (n) returnTiles(st, t, pick);
+      info.swing = n;
+      log(st, `Cast Out: ${t.name} return${t.name === 'You' ? '' : 's'} ${n} rack tile(s) to the bag and draw${t.name === 'You' ? '' : 's'} fresh.`);
+    }
   }
   function returnTiles(st, p, tiles) {
     const ids = new Set(tiles.map(t => t.id));
@@ -549,6 +628,8 @@
     const err = validate(st, placements);
     if (err) throw new Error(err);
     if (cur.burden === 'nocolors' && placements.some(x => x.tile.color)) throw new Error('Iron Rod: no colored tiles this turn.');
+    if (cur.burden === 'maxfour' && placements.length > 4) throw new Error('Tithe: you can place at most 4 tiles this turn.');
+    if (cur.burden === 'exchange') throw new Error('Lost Turn: this turn you can only exchange tiles.');
     if (placements.filter(x => x.halo).length > (cur.halo ? 1 : 0)) throw new Error('Only a Halo Blank lets a tile change letters.');
     for (const x of placements) {
       if (x.tile.L !== '?' && !x.halo && x.tile.L !== x.letter) throw new Error('Tile letter mismatch.');
@@ -563,6 +644,7 @@
       anointGain = Math.min(9, rawGain);
       if (rawGain > anointGain) res.score -= (rawGain - anointGain);
     }
+    if (cur.burden === 'half') { const before = res.score; res.score = Math.floor(before / 2); log(st, `Curse of Silence halves the board score: ${before} becomes ${res.score}.`, pi); }
     // place
     for (const x of placements) {
       st.board[x.r][x.c] = { letter: x.letter, value: tileVal(x), color: x.tile.color, owner: x.tile.color ? pi : null, blank: x.tile.L === '?', halo: x.halo, turn: st.turnNo };
@@ -573,15 +655,11 @@
     const ownColored = placements.filter(x => x.tile.color === p.color).length;
     // bonus
     let bonus = 0;
-    if (cur.bonus && cur.burden !== 'norider') {
+    if (cur.bonus) {
       const mw = res.main.w;
       if (cur.bonus === 'blessed') bonus = 8;
       if (cur.bonus === 'facesum') bonus = Math.max(5, res.main.cells.reduce((a, x) => a + x.val, 0));
       if (cur.bonus === 'rainbow') bonus = ownColored >= 2 ? 15 : 0;
-      if (cur.bonus === 'sacred') {
-        const v = [...mw].filter(ch => VOW.has(ch)).length, cn = mw.length - v;
-        bonus = (v >= 3 || cn >= 3 || /[JQXZK]/.test(mw)) ? 8 : 0;
-      }
       p.extras += bonus;
       const info = p.stats.cardGains[p.stats.cardGains.length - 1];
       if (info) { info.gain = bonus; info.fizzle = bonus === 0; }
@@ -595,7 +673,12 @@
     const cblank = placements.find(x => x.tile.color === p.color && x.tile.L === '?');
     if (cblank && res.words.some(w => w.w.length >= 7 && w.cells.some(c => c.r === cblank.r && c.c === cblank.c))) p.miracle = true;
     p.mains.push({ w: res.main.w, turn: st.turnNo });
-    if (p.taxWatcher != null) { if (res.score >= 30) { st.players[p.taxWatcher].extras += 10; log(st, `Tax Collector paid off: +10.`); } p.taxWatcher = null; }
+    if (res.score > p.bestTurn) p.bestTurn = res.score;
+    if ((st.publicGoals || []).some(g => g.id === 'palin') && st.palClaim == null && isPalin(res.main.w)) { st.palClaim = pi; log(st, `claims Palindrome Parade with ${res.main.w}: +${PALIN_PRIZE} at game end.`, pi); }
+    if (cur.burden === 'cain' && cur.burdenBy != null) {
+      const cainGain = Math.floor((res.score + bonus) / 2);
+      if (cainGain > 0) { st.players[cur.burdenBy].extras += cainGain; log(st, `Mark of Cain: ${st.players[cur.burdenBy].name} gain${st.players[cur.burdenBy].name === 'You' ? '' : 's'} ${cainGain}.`); }
+    }
     st.scoreless = res.score > 0 ? 0 : st.scoreless + 1;
     const words = res.words.map(w => `${w.w} ${w.s}`).join(', ');
     log(st, `played ${res.main.w} for ${res.score}${res.bingo ? ' (bingo +50)' : ''}${bonus ? ` +${bonus} bonus` : ''}. [${words}]`, pi);
@@ -642,12 +725,10 @@
     const mains = p.mains.map(m => m.w);
     const col = p.color;
     switch (gid) {
-      case 'firstink': return { pts: p.firstInk ? 10 : 0, note: p.firstInk ? 'colored tile on first scoring turn' : 'no colored tile on first scoring turn' };
-      case 'five': { const n = mains.filter(w => w.length === 5).length; return { pts: Math.min(45, 12 * n), note: `${n} five-letter main word(s)` }; }
+      case 'five': { const n = mains.filter(w => w.length === 5).length; return { pts: 5 * n, note: `${n} five-letter main word(s)` }; }
       case 'six': { const n = mains.filter(w => w.length === 6).length; return { pts: Math.min(45, 15 * n), note: `${n} six-letter main word(s)` }; }
-      case 'open': { const n = mains.filter(w => w.length >= 6).length; return { pts: Math.min(40, 15 * n), note: `${n} main word(s) of 6+ letters` }; }
-      case 'creature': { const l = mains.filter(isCreature); return { pts: Math.min(40, 20 * l.length), note: l.length ? l.join(', ') : 'no creature words' }; }
-      case 'counting': { const l = mains.filter(isNumber); return { pts: 20 * l.length, note: l.length ? l.join(', ') : 'no number words' }; }
+      case 'creature': { const l = mains.filter(isCreature); return { pts: 20 * l.length, note: l.length ? l.join(', ') : 'no creature words' }; }
+      case 'counting': { const l = mains.filter(isNumber); return { pts: 30 * l.length, note: l.length ? l.join(', ') : 'no number words' }; }
       case 'sameends': { const l = mains.filter(w => w[0] === w[w.length - 1]); return { pts: l.length >= 2 ? 25 : 0, note: l.length ? l.join(', ') : 'none' }; }
       case 'miracle': return { pts: p.miracle ? 25 : 0, note: p.miracle ? 'done' : 'not done' };
       case 'corner': {
@@ -662,11 +743,43 @@
           if (c + 1 < N && st.board[r][c + 1] && st.board[r][c + 1].color === col) pairs++;
           if (r + 1 < N && st.board[r + 1][c] && st.board[r + 1][c].color === col) pairs++;
         }
-        return { pts: Math.min(40, 15 * pairs), note: `${pairs} adjacent pair(s)` };
+        return { pts: 10 * pairs, note: `${pairs} adjacent pair(s)` };
       }
       case 'scatter': {
         const set = new Set(boardWords(st.board).filter(w => w.cells.some(x => x.color === col)).map(w => w.w));
-        return { pts: Math.min(45, 12 * set.size), note: `${set.size} word(s) with your color` };
+        return { pts: 5 * set.size, note: `${set.size} word(s) with your color` };
+      }
+      case 'gilded': {
+        let n = 0;
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const x = st.board[r][c]; if (x && x.color === col && PREM[r][c]) n++; }
+        return { pts: 10 * n, note: `${n} colored tile(s) on premium squares` };
+      }
+      case 'cross': {
+        let n = 0;
+        const has = (r, c) => r >= 0 && c >= 0 && r < N && c < N && st.board[r][c];
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+          const x = st.board[r][c]; if (!x || x.color !== col) continue;
+          if ((has(r, c - 1) || has(r, c + 1)) && (has(r - 1, c) || has(r + 1, c))) n++;
+        }
+        return { pts: 10 * n, note: `${n} colored tile(s) in two words` };
+      }
+      case 'neighbors': {
+        let n = 0;
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+          const x = st.board[r][c]; if (!x || x.color !== col) continue;
+          const touch = [[1,0],[-1,0],[0,1],[0,-1]].some(([dr, dc]) => { const rr = r + dr, cc = c + dc; if (rr < 0 || cc < 0 || rr >= N || cc >= N) return false; const y = st.board[rr][cc]; return y && y.color && y.color !== col; });
+          if (touch) n++;
+        }
+        return { pts: 8 * n, note: `${n} colored tile(s) touching a rival's colored tile` };
+      }
+      case 'corners4': {
+        const seen = [false, false, false, false];
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+          const x = st.board[r][c]; if (!x || x.color !== col || r === CENTER || c === CENTER) continue;
+          seen[(r < CENTER ? 0 : 2) + (c < CENTER ? 0 : 1)] = true;
+        }
+        const k = seen.filter(Boolean).length;
+        return { pts: k === 4 ? 30 : 0, note: `colored tiles in ${k} of 4 corner areas` };
       }
     }
     return { pts: 0, note: '' };
@@ -687,12 +800,15 @@
       const bonus = res.reduce((a, r, i) => i === outIdx ? a : a + r.rackPen + r.supPen, 0);
       st.players[outIdx].final.outBonus = bonus;
     }
+    const pubStand = st.addon ? publicStanding(st) : [];
     for (const p of st.players) {
       if (st.addon) p.final.goals = p.goals.map(g => ({ id: g, ...goalScore(st, p, g) }));
       const f = p.final;
       f.boardAfter = f.board + f.rackPen + f.supPen + f.outBonus;
       f.goalPts = f.goals.reduce((a, g) => a + g.pts, 0);
-      f.total = f.boardAfter + f.extras + f.goalPts;
+      f.pub = pubStand.map(x => ({ id: x.goal.id, name: x.goal.name, val: x.vals[p.idx], pts: x.pts[p.idx] }));
+      f.pubPts = f.pub.reduce((a, g) => a + g.pts, 0);
+      f.total = f.boardAfter + f.extras + f.goalPts + f.pubPts;
     }
     log(st, outIdx != null ? `${st.players[outIdx].name} went out. Game over.` : 'Six scoreless turns in a row. Game over.');
     return true;
@@ -710,13 +826,11 @@
     const w = res.main.w, len = w.length;
     const mains = p.mains.map(m => m.w);
     for (const g of p.goals) {
-      if (g === 'five' && len === 5) h += 12;
+      if (g === 'five' && len === 5) h += 5;
       if (g === 'six' && len === 6) h += 15;
-      if (g === 'open' && len >= 4 && mains.filter(x => x.length >= 4).length * 15 < 40) h += 15;
-      if (g === 'creature' && isCreature(w) && mains.filter(isCreature).length < 2) h += 20;
-      if (g === 'counting' && isNumber(w)) h += 15;
+      if (g === 'creature' && isCreature(w)) h += 20;
+      if (g === 'counting' && isNumber(w)) h += 22;
       if (g === 'sameends' && w[0] === w[len - 1] && mains.filter(x => x[0] === x[x.length - 1]).length < 2) h += 13;
-      if (g === 'firstink' && !p.firstScored && pls.some(x => x.tile.color === p.color)) h += 10;
       const cb = pls.find(x => x.tile.color === p.color && x.tile.L === '?');
       if (g === 'corner' && cb && PREM[cb.r][cb.c]) h += 25;
       if (g === 'corner' && pls.some(x => x.tile.L === '?' && x.tile.color === p.color) && !(cb && PREM[cb.r][cb.c])) h -= 15;
@@ -727,17 +841,38 @@
         const own = (r, c) => colSet.has(r * N + c) || (r >= 0 && c >= 0 && r < N && c < N && st.board[r][c] && st.board[r][c].color === p.color);
         let pairs = 0;
         for (const k of colSet) { const r = Math.floor(k / N), c = k % N; for (const [dr, dc] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) if (own(r + dr, c + dc)) pairs += colSet.has((r + dr) * N + c + dc) ? 0.5 : 1; }
-        h += pairs * 12;
+        h += pairs * 8;
       }
       if (g === 'scatter') {
         const colSet = new Set(pls.filter(x => x.tile.color === p.color).map(x => x.r * N + x.c));
         const n = res.words.filter(x => x.cells.some(c => colSet.has(c.r * N + c.c))).length;
-        h += Math.min(n, 2) * 8;
+        h += Math.min(n, 3) * 4;
       }
+      if (g === 'gilded') h += 10 * pls.filter(x => x.tile.color === p.color && PREM[x.r][x.c]).length;
+      if (g === 'cross') {
+        const has = (r, c) => (r >= 0 && c >= 0 && r < N && c < N && st.board[r][c]) || pls.some(x => x.r === r && x.c === c);
+        h += 10 * pls.filter(x => x.tile.color === p.color && (has(x.r, x.c - 1) || has(x.r, x.c + 1)) && (has(x.r - 1, x.c) || has(x.r + 1, x.c))).length;
+      }
+      if (g === 'neighbors') {
+        const rival = (r, c) => { if (r < 0 || c < 0 || r >= N || c >= N) return false; const y = st.board[r][c]; return y && y.color && y.color !== p.color; };
+        h += 8 * pls.filter(x => x.tile.color === p.color && [[1,0],[-1,0],[0,1],[0,-1]].some(([dr, dc]) => rival(x.r + dr, x.c + dc))).length;
+      }
+      if (g === 'corners4') {
+        const quad = (r, c) => (r === CENTER || c === CENTER) ? -1 : (r < CENTER ? 0 : 2) + (c < CENTER ? 0 : 1);
+        const have = new Set();
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const y = st.board[r][c]; if (y && y.color === p.color) have.add(quad(r, c)); }
+        const add = new Set(pls.filter(x => x.tile.color === p.color).map(x => quad(x.r, x.c)));
+        for (const q of add) if (q >= 0 && !have.has(q)) h += 8;
+      }
+    }
+    for (const pg of st.publicGoals || []) {
+      if (pg.id === 'palin') { if (st.palClaim == null && isPalin(w)) h += 20; }
+      else if (pg.id === 'longest') { if (len >= 7) h += 3; }
+      else if (pg.id !== 'bigturn' && pg.id !== 'gentle' && matchWord(pg, w)) h += 5;
     }
     return h;
   }
-  const colorWanted = (st, p, flags) => flags.rainbow || p.goals.some(g => ['chain', 'scatter'].includes(g)) || (p.goals.includes('firstink') && !p.firstScored);
+  const colorWanted = (st, p, flags) => flags.rainbow || p.goals.some(g => ['chain', 'scatter', 'gilded', 'cross', 'neighbors', 'corners4'].includes(g));
 
   // Returns best {pls, score, eval, res} or null. flags: {halo, noColors, plain, anoint, bonus}
   function bestMove(st, pi, flags = {}) {
@@ -779,24 +914,25 @@
         if (flags.bonus === 'blessed') bonus = 8;
         if (flags.bonus === 'facesum') bonus = Math.max(5, res.main.cells.reduce((a, x) => a + x.val, 0));
         if (flags.bonus === 'rainbow') bonus = pls.filter(x => x.tile.color === p.color).length >= 2 ? 15 : 0;
-        if (flags.bonus === 'sacred') { const mw = res.main.w; const v = [...mw].filter(ch => VOW.has(ch)).length; bonus = (v >= 3 || mw.length - v >= 3 || /[JQXZK]/.test(mw)) ? 8 : 0; }
+        const scr = flags.half ? Math.floor(res.score / 2) : res.score;
         const leftCol = p.supply.filter(t => !used.has(t.id));
-        const ev = res.score + bonus + (endgame ? -leftRack.reduce((a, t) => a + VALUES[t.L], 0) * 2 : leaveScore(leftRack) * (family ? 0.4 : 0.9)) + (family ? (st.rng() - 0.5) * (p.level === 'casual' ? 44 : 10) : 0)
+        const ev = scr + bonus + (endgame ? -leftRack.reduce((a, t) => a + VALUES[t.L], 0) * 2 : leaveScore(leftRack) * (family ? 0.4 : 0.9)) + (family ? (st.rng() - 0.5) * (p.level === 'casual' ? 44 : 10) : 0)
           + goalHeuristic(st, p, res, pls) + (leftCol.length < p.supply.length ? -0.3 * (p.supply.length - leftCol.length) : 0);
-        if (!best || ev > best.eval) best = { pls, score: res.score, eval: ev, res, anointIdx, bonus };
+        if (!best || ev > best.eval) best = { pls, score: scr, eval: ev, res, anointIdx, bonus };
       }
     }
     return best;
   }
 
-  const STATIC_VALUE = { manna: 2, jubilee: 1.5, covenant: 2, secondsight: 2.5, passhalo: 0.5, lead: 4, temptation: 0, fog: 5, ironrod: 3, shortrope: 4, scapegoat: 3, mirror: 0, taxcollector: 2 };
+  const STATIC_VALUE = { manna: 2, jubilee: 1.5, covenant: 2, secondsight: 2.5, passhalo: 0.5, guardian: 3, fog: 5, ironrod: 3, tithe: 4, castout: 3, lostturn: 8, cain: 6, curse: 6 };
 
   // AI turn: decides card, resolves, moves. agents used for other players' decisions.
   async function aiTurn(st, agents, pi) {
     const p = st.players[pi];
     const cur = st.cur;
-    const flags0 = { noColors: cur.burden === 'nocolors', plain: cur.burden === 'plain', maxPlace: cur.burden === 'maxfour' ? 4 : undefined };
-    let base = bestMove(st, pi, flags0);
+    const flags0 = { noColors: cur.burden === 'nocolors', plain: cur.burden === 'plain', half: cur.burden === 'half', maxPlace: cur.burden === 'maxfour' ? 4 : undefined };
+    const lostTurn = cur.burden === 'exchange';
+    let base = lostTurn ? null : bestMove(st, pi, flags0);
     const baseEval = base ? base.eval : -20;
     // card choice
     let choice = null;
@@ -807,12 +943,12 @@
       let bestVal = -1;
       for (const id of new Set(p.cards)) {
         if (cardBlockedReason(st, p, id)) continue;
+        if (lostTurn && (CARD[id].bonus || id === 'haloblank' || id === 'anoint')) continue;
         let v;
         if (CARD[id].bonus) { const b = bestMove(st, pi, { ...flags0, bonus: id }); v = b ? b.eval - baseEval : 0; }
         else if (id === 'haloblank') { const rc = rackCounts(p, flags0.noColors); if (rc.blanks >= (p.level === 'expert' ? 2 : 1)) { v = 0; continue; } const b = bestMove(st, pi, { ...flags0, halo: true }); v = b ? b.eval - baseEval : 0; }
         else if (id === 'anoint') { const b = bestMove(st, pi, { ...flags0, anoint: true }); v = b ? b.eval - baseEval : 0; }
         else if (id === 'temptation') v = 10 + Math.min(10, total(st.players[(pi + 1) % st.np]));
-        else if (id === 'mirror') v = st.lastEvil ? (st.lastEvil === 'temptation' ? 10 + Math.min(10, total(st.players[(pi + 1) % st.np])) : STATIC_VALUE[st.lastEvil] ?? 1) : -1;
         else if (id === 'manna' || id === 'jubilee') v = base && leaveScore(p.rack) < -4 ? 5 : STATIC_VALUE[id];
         else if (id === 'covenant') v = p.goals.some(g => goalDead(st, p, g)) ? 8 : STATIC_VALUE[id];
         else if (id === 'secondsight') v = p.goals.some(g => goalDead(st, p, g)) ? 9 : STATIC_VALUE[id];
@@ -823,11 +959,16 @@
     }
     if (choice) {
       await playCard(st, agents, pi, choice);
-      if (st.cur.rackChanged || ['haloblank', 'anoint'].includes(choice) || CARD[choice].bonus) {
+      if (!lostTurn && (st.cur.rackChanged || ['haloblank', 'anoint'].includes(choice) || CARD[choice].bonus)) {
         base = bestMove(st, pi, { ...flags0, halo: cur.halo, anoint: cur.anoint, bonus: cur.bonus });
       }
     }
-    if (base && (base.score >= 6 || st.bag.length < 7 || leaveScore(p.rack) > -6)) {
+    if (lostTurn) {
+      if (st.bag.length >= 7) {
+        const sorted = p.rack.slice().sort((a, b) => (LEAVEV[a.L] ?? 0) - (LEAVEV[b.L] ?? 0));
+        exchange(st, pi, sorted.slice(0, Math.min(sorted.length, 4)));
+      } else passTurn(st, pi);
+    } else if (base && (base.score >= 6 || st.bag.length < 7 || leaveScore(p.rack) > -6)) {
       commitMove(st, pi, base.pls, base.anointIdx);
     } else if (st.bag.length >= 7) {
       const sorted = p.rack.slice().sort((a, b) => (LEAVEV[a.L] ?? 0) - (LEAVEV[b.L] ?? 0));
@@ -842,7 +983,6 @@
     if (g === 'corner' || g === 'miracle') return !p.supply.some(t => t.L === '?') && goalScore(st, p, g).pts === 0;
     if (g === 'counting') return true;
     if (g === 'creature') return p.mains.map(m => m.w).filter(isCreature).length === 0;
-    if (g === 'firstink') return p.firstScored && !p.firstInk;
     return false;
   }
 
@@ -868,17 +1008,17 @@
           case 'manna': return p.rack.slice().sort((a, b) => (LEAVEV[a.L] ?? 0) - (LEAVEV[b.L] ?? 0)).slice(0, ctx.n);
           case 'jubilee': return p.rack.filter(t => (LEAVEV[t.L] ?? 0) <= -1.5).slice(0, ctx.n);
           case 'covenant': { const d = p.goals.findIndex(g => goalDead(st, p, g)); return d >= 0 ? d : (goalScore(st, p, p.goals[0]).pts <= goalScore(st, p, p.goals[1]).pts ? 0 : 1); }
-          case 'secondSightKeep': { const worth = id => ({ chain: 3, five: 3, six: 3, scatter: 2.5, creature: 2.5, open: 2, corner: 1.8, sameends: 1.5, counting: 1.5, miracle: 1.5 }[id] ?? 1); return worth(ctx.options[0]) >= worth(ctx.options[1]) ? ctx.options[0] : ctx.options[1]; }
+          case 'secondSightKeep': { const worth = id => ({ chain: 3, six: 3, creature: 3, scatter: 2.5, gilded: 2.5, cross: 2, five: 1.5, corner: 1.8, sameends: 1.5, counting: 1.5, miracle: 1.5, neighbors: 1.5, corners4: 1.5 }[id] ?? 1); return worth(ctx.options[0]) >= worth(ctx.options[1]) ? ctx.options[0] : ctx.options[1]; }
         }
       },
     };
   }
-  const cardWorth = id => ({ temptation: 10, blessed: 9, facesum: 9, rainbow: 8, fog: 6, sacred: 6, lead: 5, haloblank: 5, mirror: 5, anoint: 4, scapegoat: 3, ironrod: 3, manna: 3, covenant: 3, secondsight: 3, jubilee: 2, shortrope: 4, taxcollector: 2, passhalo: 1 })[id] ?? 1;
+  const cardWorth = id => ({ temptation: 10, blessed: 9, facesum: 9, rainbow: 8, fog: 6, lostturn: 7, cain: 6, curse: 6, guardian: 5, haloblank: 5, anoint: 4, ironrod: 3, castout: 3, manna: 3, covenant: 3, secondsight: 3, jubilee: 2, tithe: 4, passhalo: 1 })[id] ?? 1;
 
   G.AA = {
     VALUES, DIST, N, CENTER, PREM, CARDS, CARD, GOALS, GOAL, CREATURES, NUMBERS, COLORED_LETTERS,
     loadDict, loadCommon, isWord, COMMON, newGame, dealRacks, beginTurn, playCard, commitMove, exchange, passTurn, endTurn,
     validate, scoreMove, cardBlockedReason, goalScore, goalProgress, bestMove, aiTurn, aiAgent, total, tileVal,
-    leaveScore, boardWords, burnB, dict: D,
+    leaveScore, boardWords, burnB, dict: D, PUBLIC, publicStanding, RHYME_LABEL,
   };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

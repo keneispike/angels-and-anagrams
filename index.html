@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Angels and Anagrams</title>
 <div class="bgWash" aria-hidden="true"></div>
 <div id="splash" class="splash" role="button" tabindex="0" aria-label="Click to continue">
@@ -60,6 +60,9 @@ nav.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink)
 .hamburger:hover{border-color:var(--muted)}
 nav.tabs.menu{position:absolute;right:0;top:calc(100% + 6px);flex-direction:column;border-radius:10px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.18);z-index:20;min-width:170px}
 nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12px}
+.mailLink{font-size:13px;color:var(--nice);text-decoration:underline;font-weight:600}
+.mailLink:hover{color:var(--ink)}
+@media (max-width:700px){.mailLink{font-size:11px}}
 
 /* scoreboard */
 .scores{display:flex;flex-direction:column;gap:4px}
@@ -272,6 +275,7 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
     <div class="brand">
       <h1>Angels <span class="amp">&amp;</span> Anagrams</h1>
       <span class="motto">v2.3 candidate playtest table · two angels, one board, five Halos each</span>
+      <a class="mailLink" href="mailto:chief@mail.grokbot.com?subject=Angels%20feedback">chief@mail.grokbot.com</a>
     </div>
     <div class="menuWrap">
       <button class="hamburger" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Help menu">Help</button>
@@ -364,8 +368,8 @@ menuBtn.addEventListener('click', () => {
   menuBtn.setAttribute('aria-expanded', String(willOpen));
 });
 document.addEventListener('click', e => { if (!tabMenu.hidden && !e.target.closest('.menuWrap')) closeMenu(); });
-document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('nav.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+document.querySelectorAll('nav.tabs button[data-tab]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav.tabs button[data-tab]').forEach(x => x.setAttribute('aria-selected', x === b));
   for (const t of ['play','howto','report','ref']) $('#view-' + t).hidden = t !== b.dataset.tab;
   try { localStorage.setItem('aa-tab', b.dataset.tab); } catch (e) {}
   closeMenu();
@@ -446,7 +450,6 @@ const humanAgent = {
     switch (kind) {
       case 'keep': return pickTiles('Bag burn', `You drew 14 tiles. Keep ${ctx.n} as your opening rack. The other ${14 - ctx.n} leave the game face-down.`, ctx.tiles, ctx.n, true, 'Keep these');
       case 'target': return 1 - ME;
-      case 'tithe': return pickCard('Tithe', 'Claude played Tithe on you. Discard one card from your hand; you will draw a replacement.', p.cards);
       case 'passGive': return pickCard('Pass the Halo', 'Choose one card to give to the other player.', p.cards);
       case 'manna': return pickTiles('Fresh Manna', 'Pick 2 rack tiles to return to the bag. You will draw 2 new ones.', p.rack.filter(t => !pendingIds().has(t.id)), 2, true, 'Return');
       case 'jubilee': return pickTiles('Jubilee', ctx.n === 3 ? 'You may return up to 3 rack tiles and redraw.' : 'Jubilee was played. You may return up to 2 rack tiles and redraw (or none).', p.rack.filter(t => p.idx !== ME || !pendingIds().has(t.id)), ctx.n, false, 'Return');
@@ -483,7 +486,7 @@ function startScreen() {
   try { localStorage.removeItem('aa-online'); } catch (e) {}
   let level = UI.aiLevel, color = UI.youColor, vs = 'ai', joining = false;
   modal(`<h3>New game</h3>
-    <p>Standard 15×15 board and 100-tile bag, with the Angels and Anagrams v2.2 add-on. Words are checked against a ${AA.dict.count.toLocaleString()}-word list.</p>
+    <p>Standard 15×15 board and 100-tile bag, with the Angels and Anagrams v2.3 add-on. Words are checked against a ${AA.dict.count.toLocaleString()}-word list.</p>
     <div><b>Who's playing</b><div class="opt" id="vs" style="margin-top:6px">
       <button class="btn small" data-v="ai" aria-pressed="true">Vs Claude</button>
       <button class="btn small" data-v="friend" aria-pressed="false">Vs a friend (2 devices)</button></div></div>
@@ -754,6 +757,8 @@ async function placeTile(id, r, c) {
   const t = p.rack.concat(p.supply).find(x => x.id === id);
   if (!t) return render();
   if (t.color && st.cur.burden === 'nocolors') { setStatus('Iron Rod: you cannot place colored tiles this turn.', 'err'); return; }
+  if (st.cur.burden === 'exchange') { setStatus('Lost Turn: this turn you can only exchange tiles.', 'err'); return; }
+  if (st.cur.burden === 'maxfour' && UI.pending.length >= 4) { setStatus('Tithe: you can place at most 4 tiles this turn.', 'err'); return; }
   let letter = t.L;
   if (t.L === '?') { letter = await pickLetter('Blank tile'); if (!letter) return render(); }
   UI.pending.push({ r, c, tile: t, letter, halo: false });
@@ -827,6 +832,7 @@ function renderStatus() {
     if (cur.card) hints.push(`Card played: <b>${esc(AA.CARD[cur.card].name)}</b>.`);
     if (cur.halo) hints.push('Halo Blank is live: place tiles, then tap “Pick Halo tile”.');
     if (cur.anoint) hints.push('Anoint is live: place tiles, then tap “Pick Anointed tile”.');
+    if (cur.burden === 'exchange') hints.push('Lost Turn: you can only exchange tiles this turn (or pass).');
     el.innerHTML = hints.join(' ');
     el.hidden = !hints.length;
     return;
@@ -835,20 +841,23 @@ function renderStatus() {
   const err = AA.validate(st, pls);
   if (err) { el.textContent = err; el.classList.add('err'); return; }
   if (cur.burden === 'nocolors' && pls.some(x => x.tile.color)) { el.textContent = 'Iron Rod: you cannot place colored tiles this turn.'; el.classList.add('err'); return; }
+  if (cur.burden === 'maxfour' && pls.length > 4) { el.textContent = 'Tithe: you can place at most 4 tiles this turn.'; el.classList.add('err'); return; }
+  if (cur.burden === 'exchange') { el.textContent = 'Lost Turn: this turn you can only exchange tiles.'; el.classList.add('err'); return; }
   const ai = UI.anointId != null ? pls.findIndex(x => x.tile.id === UI.anointId) : undefined;
-  const res = AA.scoreMove(st.board, pls.map(x => ({ r: x.r, c: x.c, letter: x.letter, val: AA.tileVal(x) })), { plain: cur.burden === 'plain', anointIdx: ai >= 0 && cur.anoint ? ai : undefined });
+  let res = AA.scoreMove(st.board, pls.map(x => ({ r: x.r, c: x.c, letter: x.letter, val: AA.tileVal(x) })), { plain: cur.burden === 'plain', anointIdx: ai >= 0 && cur.anoint ? ai : undefined });
+  const halved = cur.burden === 'half';
+  if (halved) res = { ...res, score: Math.floor(res.score / 2) };
   let bonus = '';
   const p = st.players[ME];
   if (cur.bonus) {
-    const mw = res.main.w; let b = 0;
-    if (cur.bonus === 'blessed') b = 10;
-    if (cur.bonus === 'facesum') b = Math.max(8, res.main.cells.reduce((a, x) => a + x.val, 0));
+    let b = 0;
+    if (cur.bonus === 'blessed') b = 8;
+    if (cur.bonus === 'facesum') b = Math.max(5, res.main.cells.reduce((a, x) => a + x.val, 0));
     if (cur.bonus === 'rainbow') b = pls.filter(x => x.tile.color === p.color).length >= 2 ? 15 : 0;
-    if (cur.bonus === 'sacred') { const v = [...mw].filter(ch => 'AEIOU'.includes(ch)).length; b = (v >= 3 || mw.length - v >= 3 || /[JQXZK]/.test(mw)) ? 8 : 0; }
     bonus = ` <span class="chip gold">${esc(AA.CARD[cur.bonus].name)} +${b}</span>`;
   }
   el.classList.add('ok');
-  el.innerHTML = `<span class="pts">${res.score} pts</span> · main word <b>${esc(res.main.w)}</b>${res.words.length > 1 ? ` · also ${res.words.slice(1).map(w => esc(w.w) + ' ' + w.s).join(', ')}` : ''}${res.bingo ? ' · <b>bingo +50</b>' : ''}${bonus}`;
+  el.innerHTML = `<span class="pts">${res.score} pts${halved ? ' (halved)' : ''}</span> · main word <b>${esc(res.main.w)}</b>${res.words.length > 1 ? ` · also ${res.words.slice(1).map(w => esc(w.w) + ' ' + w.s).join(', ')}` : ''}${res.bingo ? ' · <b>bingo +50</b>' : ''}${bonus}`;
 }
 
 // ---------- render ----------
@@ -860,7 +869,7 @@ function render() {
   $('#scores').innerHTML = st.players.map(x => `<div class="plaque ${st.turn === x.idx && !st.over ? 'active' : ''}">
     <span class="swatch" style="background:var(--p-${x.color})"></span>
     <span class="who">${esc(x.name)}${UI.online && x.idx === ME ? ' (you)' : ''} <span class="halos" title="Card plays used (Halos)">${[0,1,2,3,4].map(i => `<i class="${i < x.plays ? 'used' : ''}"></i>`).join('')}</span>
-      ${x.burden ? `<span class="chip">${burdenName(x.burden)} next turn</span>` : ''}</span>
+      ${x.burden ? `<span class="chip">${burdenName(x.burden)} next turn</span>` : ''}${x.guardian ? '<span class="chip nice" title="Guardian Angel cancels the next Evil aimed at this player">Guardian</span>' : ''}</span>
     <span class="tot">${AA.total(x)}</span>
     <span class="sub">board ${x.score} · cards ${x.extras >= 0 ? '+' : ''}${x.extras}</span></div>`).join('');
   // burden banner
@@ -895,7 +904,7 @@ function render() {
   }).join('') || '<span class="counts">Empty</span>';
   // actions
   const acts = [];
-  acts.push(`<button class="btn primary" id="aPlay" ${!myTurn || !UI.pending.length ? 'disabled' : ''}>Play</button>`);
+  acts.push(`<button class="btn primary" id="aPlay" ${!myTurn || !UI.pending.length || cur.burden === 'exchange' ? 'disabled' : ''}>Play</button>`);
   acts.push(`<button class="btn" id="aRecall" ${!myTurn || !UI.pending.length ? 'disabled' : ''}>Back</button>`);
   acts.push(`<button class="btn" id="aShuffle" ${!myTurn ? 'disabled' : ''}>Shuffle</button>`);
   if (cur.halo && myTurn) acts.push(`<button class="btn goldb" id="aHalo" ${!UI.pending.length ? 'disabled' : ''} aria-pressed="${UI.mode === 'halo'}">${UI.mode === 'halo' ? 'Tap a placed tile…' : 'Pick Halo tile'}</button>`);
@@ -913,10 +922,10 @@ function render() {
       <span class="row">${why ? `<span class="cwhy">${esc(why)}</span>` : '<span></span>'}<button class="btn small" data-card="${id}" ${!myTurn || why ? 'disabled' : ''}>Play card</button></span></div>`;
   }).join('') || '<span class="counts">No cards in hand.</span>';
   // goals
-  $('#goals').innerHTML = p.goals.map(g => { const gs = AA.goalScore(st, p, g); return `<div class="goal"><span class="gn">${esc(AA.GOAL[g].name)}<span class="pts">${gs.pts} now</span></span><span class="gt">${esc(AA.GOAL[g].text)}</span><span class="gp">${esc(gs.note)}</span></div>`; }).join('');
-  if (p.known[1 - ME]) $('#goals').insertAdjacentHTML('beforeend', `<div class="goal" style="background:var(--evil-soft)"><span class="gn">${esc(opp.name)}’s goals (False Prophet)</span><span class="gt">${p.known[1 - ME].map(g => esc(AA.GOAL[g].name)).join(' · ')}</span><span class="gp">As of when you looked.</span></div>`);
+  const pubHtml = (st.publicGoals || []).length ? `<h3 class="pubh">Shared goals <small>everyone sees these</small></h3>` + AA.publicStanding(st).map(x => { const me = x.vals[p.idx], them = x.vals[opp.idx]; const unit = x.goal.id === 'bigturn' ? ' pts' : ''; return `<div class="goal"><span class="gn">${esc(x.goal.name)}<span class="pts">${x.pts[p.idx]} now</span></span><span class="gt">${esc(x.goal.text)}</span><span class="gp">${x.goal.race ? (me ? 'You claimed it.' : them ? 'Claimed by your opponent.' : 'Unclaimed.') : `You ${me}${unit}, opponent ${them}${unit}.`}</span></div>`; }).join('') : '';
+  $('#goals').innerHTML = p.goals.map(g => { const gs = AA.goalScore(st, p, g); return `<div class="goal"><span class="gn">${esc(AA.GOAL[g].name)}<span class="pts">${gs.pts} now</span></span><span class="gt">${esc(AA.GOAL[g].text)}</span><span class="gp">${esc(gs.note)}</span></div>`; }).join('') + pubHtml;
   $('#handLbl').textContent = `Hand (${p.cards.length})`;
-  $('#goalsLbl').textContent = `Goals (${p.goals.length})`;
+  $('#goalsLbl').textContent = `Goals (${p.goals.length + (st.publicGoals || []).length})`;
   // ai hand backs
   $('#aiHand').innerHTML = opp.cards.map(id => `<span class="cardback ${AA.CARD[id].side}" title="${AA.CARD[id].side === 'N' ? 'Nice' : 'Evil'} card back">${AA.CARD[id].side === 'N' ? 'N' : 'E'}</span>`).join('') + `<span class="counts" style="margin-left:6px">${opp.cards.length} cards · ${opp.supply.length} colored tiles left · ${opp.rack.length} on rack</span>`;
   $('#aiNote').textContent = UI.online ? 'playing on another device' : ({ casual: 'Casual', family: 'Family', expert: 'Expert' })[UI.aiLevel] + ' level';
@@ -973,8 +982,8 @@ function fitBoard() {
 let resizeT;
 window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(fitBoard, 120); });
 window.addEventListener('orientationchange', () => setTimeout(fitBoard, 200));
-const burdenName = b => ({ norider: 'No bonus', plain: 'Fog', nocolors: 'Iron Rod' })[b];
-const burdenText = b => ({ norider: 'Lead Weight: you cannot play a scoring bonus card this turn.', plain: 'Fog the Path: premium squares count as plain this turn.', nocolors: 'Iron Rod: you cannot place colored tiles this turn.' })[b];
+const burdenName = b => ({ plain: 'Fog', nocolors: 'Iron Rod', maxfour: 'Tithe', exchange: 'Lost Turn', cain: 'Mark of Cain', half: 'Curse' })[b] || b;
+const burdenText = b => ({ plain: 'Fog the Path: premium squares count as plain this turn.', nocolors: 'Iron Rod: you cannot place colored tiles this turn.', maxfour: 'Tithe: you can place at most 4 tiles this turn.', exchange: 'Lost Turn: you can only exchange tiles (or pass) this turn.', cain: 'Mark of Cain: your opponent gains half of what you score this turn.', half: 'Curse of Silence: your board score is halved this turn.' })[b] || '';
 
 // ---------- drag and drop ----------
 const drag = { src: null, active: false, ghost: null, over: null, justDragged: false };
@@ -1087,6 +1096,7 @@ function endGame() {
     ${row('Card extras', x => (x.final.extras >= 0 ? '+' : '') + x.final.extras)}
     ${row('Secret goal A', x => goalCell(x, 0))}
     ${row('Secret goal B', x => goalCell(x, 1))}
+    ${(st.publicGoals || []).map((pg, i) => row('Shared: ' + esc(pg.name), x => { const g = x.final.pub && x.final.pub[i]; return g ? `${g.pts}<small>${pg.race ? (g.val ? 'claimed' : '') : 'count ' + g.val}</small>` : ''; })).join('')}
     <tr class="total"><td>Total</td><td>${a.final.total}</td><td>${b.final.total}</td></tr></tbody></table></div>
     <div class="actions"><button class="btn primary" id="again">New game</button><button class="btn" id="look">Look at the board</button></div>`, (m, done) => {
     m.querySelector('#again').addEventListener('click', () => { done(); startScreen(); });
@@ -1111,12 +1121,13 @@ function renderHowto() {
   <li>Longer words and premium squares score more. Using all 7 of your tiles in one turn is a "bingo" — an extra +50.</li>
   </ul>
   <h3>Your turn, in order</h3><ul>
-  <li><b>1. Optional card.</b> You may play one action card from your hand before you play your word. Nice cards help you; Evil cards affect an opponent. You only get 5 card plays for the whole game, so spend them when they count.</li>
+  <li><b>1. Optional card.</b> You may play one action card from your hand before you play your word. Nice cards help you; Evil cards hit an opponent, and most land on <i>their next turn</i>, so they always get a warning. (Tiny Temptation and Cast Out happen right away.) A Guardian Angel cancels the next Evil aimed at you. You only get 5 card plays for the whole game, so spend them when they count.</li>
   <li><b>2. Place tiles.</b> Drag tiles onto the board, or tap a tile then tap a square. Tap "Take back" to undo before you commit.</li>
   <li><b>3. Play the word</b> (or Exchange tiles for new ones, or Pass, if you're stuck).</li>
   </ul>
   <h3>Scoring at the end</h3><ul>
-  <li>Everyone reveals 2 secret goals, scored from what actually happened on the board (e.g. "score two 6-letter words"). Check your "Secret goals" panel any time — it shows what each is worth right now.</li>
+  <li>Everyone reveals 2 secret goals, scored from what actually happened on the board (e.g. "score two 6-letter words", or "colored tiles on premium squares"). Check your "Secret goals" panel any time — it shows what each is worth right now.</li>
+  <li>Two <b>shared goals</b> are face up for everyone. Most of them are a ranking: whoever has the most (most Nice cards played, longest word, and so on) gets +30, second place +12, and you need at least 1 to score. Palindrome Parade is a race: the first player to play a palindrome main word (3+ letters) gets +25.</li>
   <li>Leftover tiles in your rack cost you points; going out first (using your last tile with the bag empty) earns you the other player's leftovers.</li>
   <li>Highest total wins.</li>
   </ul>
@@ -1130,14 +1141,17 @@ function renderRef() {
   const goals = liveGoals.map(g => `<div class="goal"><span class="gn">${esc(g.name)} ×${g.qty}</span><span class="gt">${esc(g.text)}</span></div>`).join('');
   const cardTotal = live.reduce((a, c) => a + c.qty, 0), goalTotal = liveGoals.reduce((a, g) => a + g.qty, 0);
   $('#ref').innerHTML = `<h2>Cards and goals in this build</h2>
-  <p>v2.3 candidate rules. Setup for two players: 3 action cards each (hand of 3), 2 secret goals each, a 7-tile colored kit each (E A R S T N and a blank) split into 3 held + 4 in reserve, and a bag burn where each player draws 14, keeps 7, and puts 7 out of the game.</p>
-  <h3>Your turn</h3><ul><li>Optional card, one per turn, any time before you play your word (house rule for this table; v2.2 says start of turn only). Only while you have Halos left (5 per game).</li><li>Place and score tiles. Mix rack tiles and your colored tiles, up to 7. You hold at most 3 colored tiles at a time; a colored tile you place is worth a flat 4 points and is replaced from your reserve at end of turn.</li><li>Scoring-bonus cards pay after scoring. You draw back to 3 cards only on turns you played one.</li><li>Two-player rule: no Evil card if you played an Evil on your previous turn.</li></ul>
+  <p>v2.3 rules. Setup for two players: 3 action cards each (hand of 3), 2 secret goals each, a 7-tile colored kit each (E A R S T N and a blank) split into 2 held + 5 in reserve, and a bag burn where each player draws 14, keeps 7, and puts 7 out of the game.</p>
+  <h3>Your turn</h3><ul><li>Optional card, one per turn, any time before you play your word (house rule for this table; v2.2 says start of turn only). Only while you have Halos left (5 per game).</li><li>Place and score tiles. Mix rack tiles and your colored tiles, up to 7. You hold at most 2 colored tiles at a time; a colored tile you place is worth a flat 4 points and is replaced from your reserve at end of turn.</li><li>Scoring-bonus cards pay after scoring. You draw back to 3 cards only on turns you played one.</li><li>Two-player rule: no Evil card if you played an Evil on your previous turn.</li><li>Evil cards hit on the target's next turn (they see it coming), except Tiny Temptation and Cast Out, which happen right away. A player carries one Evil at a time; a newer one replaces the older one.</li></ul>
   <h3>How this table rules the grey areas</h3><ul>
   <li>You choose which 7 of your 14 burn tiles to keep.</li>
   <li>The game ends when the bag is empty and a player uses every rack tile. Colored tiles don't have to be used up to go out.</li>
   <li>Leftover colored tiles cost 1 each (the blank costs 0), and the player who went out collects those points too.</li>
   <li>A Halo Blank tile stays on the board as the letter you named and is worth 0 for the rest of the game.</li>
-  <li>For a one-tile play, the main word is the longer word it makes.</li></ul>
+  <li>For a one-tile play, the main word is the longer word it makes.</li>
+  <li>Goals that read the final board (Gilded Tiles, Crossroads, Neighbors, Four Corners, Color Chain, Scatter) count only tiles still on the board. The center star counts as a premium square.</li></ul>
+  <h3>Shared goals (2 drawn per game from ${AA.PUBLIC.length})</h3><div class="refgrid">${AA.PUBLIC.map(g => `<div class="goal"><span class="gn">${esc(g.name)}</span><span class="gt">${esc(g.text)}${g.variants ? ' (card picks one at setup)' : ''}</span></div>`).join('')}</div>
+  <p>Ranked goals: 1st +30, 2nd +12, ties split and round down, you need at least 1. Palindrome Parade: first to claim gets +25.</p>
   <h3>Action deck (${cardTotal})</h3><div class="refgrid">${cards}</div>
   <h3>Goal deck (${goalTotal})</h3><div class="refgrid">${goals}</div>
   <h3>Allowed lists</h3><p><b>Creature Comforts:</b> ${[...AA.CREATURES].join(', ')}, plus plurals.</p><p><b>Counting Sheep:</b> ${[...AA.NUMBERS].join(', ')}. PAIR is off unless you agree at setup.</p>`;
@@ -1146,9 +1160,9 @@ function renderRef() {
 renderHowto();
 renderRef();
 if (window.AA_REPORT) $('#report').innerHTML = window.AA_REPORT;
-try { const t = localStorage.getItem('aa-tab'); if (t && t !== 'play') document.querySelector(`nav.tabs button[data-tab="${t}"]`)?.click(); } catch (e) {}
 boot();
 })();
 </script>
+
 
 </body></html>
