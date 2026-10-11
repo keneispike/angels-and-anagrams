@@ -389,7 +389,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const HU = 0, AI = 1;
 let ME = HU;
 const COLORS = ['red','black','white','gold'];
-const UI = { gen:0, ending:false, st:null, agents:null, sel:null, pending:[], mode:null, anointId:null, busy:false, rackOrder:[], passArm:false, aiLevel:'family', youColor:'red', online:false, gameId:null };
+const UI = { gen:0, ending:false, burning:false, st:null, agents:null, sel:null, pending:[], mode:null, anointId:null, busy:false, rackOrder:[], passArm:false, aiLevel:'family', youColor:'red', online:false, gameId:null };
 
 // ---------- splash ----------
 (() => {
@@ -535,7 +535,7 @@ function startScreen() {
       <button class="btn small" data-l="casual" aria-pressed="${level === 'casual'}">Casual: loose play</button>
       <button class="btn small" data-l="family" aria-pressed="${level === 'family'}">Family: sharp play</button>
       <button class="btn small" data-l="expert" aria-pressed="${level === 'expert'}">Expert: sharpest play</button></div></div>
-    <p id="friendNote" hidden style="font-size:13px;color:var(--muted)">You'll get an invite link to send your friend once, at the start. After that, moves sync automatically — no need to send anything else. (Uses a free public relay, so it's best-effort; if it ever drops, reopening the app reconnects you. This mode also skips the 14-tile "bag burn" and just deals 7 tiles each, to keep setup simple.)</p>
+    <p id="friendNote" hidden style="font-size:13px;color:var(--muted)">You'll get an invite link to send your friend once, at the start. After that, moves sync automatically — no need to send anything else. (Uses a free public relay, so it's best-effort; if it ever drops, reopening the app reconnects you. Each of you picks 7 of 14 starting tiles, same as against Claude.)</p>
     <div id="joinWrap" hidden style="font-size:13px;color:var(--muted);margin-top:6px">Already have a code from a friend? <a href="#" id="joinLink">Enter it here</a> instead of starting a new game.</div>
     <div class="actions"><button class="btn primary" id="go">Deal the tiles</button></div>`, (m, done) => {
     m.querySelectorAll('#vs button').forEach(b => b.addEventListener('click', () => {
@@ -702,12 +702,23 @@ function applyIncoming(payload) {
   saveOnlineState();
   if (incoming.over) return endGame();
   render();
+  maybeBurnPick();
 }
 async function newFriendGame(color) {
   UI.youColor = color;
   const friendColor = color === 'gold' ? 'red' : 'gold';
   const st = AA.newGame({ addon: true, players: [{ name: 'Player 1', color, human: true }, { name: 'Player 2', color: friendColor, human: true }] });
-  await AA.dealRacks(st, (p, tiles, n) => tiles.slice(0, n));
+  // Bag burn, same as against Claude: you pick your 7 of 14 now; your friend picks theirs when they join.
+  let friendPool = null;
+  await AA.dealRacks(st, (p, tiles, n) => {
+    if (p.idx === HU) return pickTiles('Bag burn', `You drew 14 tiles. Keep ${n} as your opening rack. The other ${14 - n} leave the game face-down.`, tiles, n, true, 'Keep these');
+    friendPool = tiles; return [];
+  });
+  if (friendPool) {
+    const ids = new Set(friendPool.map(t => t.id));
+    st.out = st.out.filter(t => !ids.has(t.id));
+    st.players[1].burnPool = friendPool; st.waitBurn = true;
+  }
   UI.st = st; UI.online = true; ME = HU; UI.gameId = Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 6);
   UI.agents = [humanAgent, remoteAutoAgent];
   UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null;
@@ -730,6 +741,24 @@ async function joinFriendGame(gameId) {
   connectRelay(gameId);
   render();
   setTimeout(() => requestState(gameId), 1200); // give the socket a moment to finish connecting/subscribing first
+}
+async function maybeBurnPick() {
+  const st = UI.st;
+  if (!st || !st.waitBurn || UI.burning) return;
+  const p = st.players[ME];
+  if (!p.burnPool) return; // the other player still has to choose
+  UI.burning = true;
+  const pool = p.burnPool, n = 7;
+  const keep = await pickTiles('Bag burn', `You drew 14 tiles. Keep ${n} as your opening rack. The other ${14 - n} leave the game face-down.`, pool, n, true, 'Keep these');
+  UI.burning = false;
+  if (st !== UI.st) return; // game was exited or replaced while choosing
+  const ids = new Set(keep.map(t => t.id));
+  p.rack = pool.filter(t => ids.has(t.id));
+  st.out.push(...pool.filter(t => !ids.has(t.id)));
+  delete p.burnPool; st.waitBurn = false;
+  UI.rackOrder = p.rack.concat(p.supply).map(t => t.id);
+  st._seq = (st._seq || 0) + 1;
+  publishState(); render();
 }
 function inviteUrl() { return location.origin + location.pathname + '#j=' + UI.gameId; }
 async function promptInvite() {
@@ -784,6 +813,7 @@ function resumeSavedOnline(saved) {
   if (!st.over && (!st.cur || st.cur.p !== st.turn)) AA.beginTurn(st);
   connectRelay(UI.gameId);
   render();
+  maybeBurnPick();
 }
 
 // ---------- human actions ----------
@@ -885,6 +915,7 @@ function renderStatus() {
   el.hidden = false;
   if (statusOverride) { el.textContent = statusOverride.msg; if (statusOverride.kind) el.classList.add(statusOverride.kind); statusOverride = null; return; }
   if (st.over) { el.textContent = 'Game over.'; return; }
+  if (st.waitBurn) { el.textContent = st.players[ME].burnPool ? 'Choose your 7 starting tiles.' : 'Waiting for your friend to join and choose their starting tiles. This will update on its own.'; return; }
   if (UI.busy || st.turn !== ME) { el.innerHTML = UI.online ? `Waiting for ${esc(st.players[1 - ME].name)} to play their turn. This will update on its own.` : `Claude is thinking <span class="thinking"><i></i><i></i><i></i></span>`; return; }
   if (!UI.pending.length) {
     const hints = [];
@@ -924,7 +955,7 @@ function render() {
   const st = UI.st; if (!st) return;
   paintConn();
   const p = st.players[ME], opp = st.players[1 - ME], cur = st.cur || {};
-  const myTurn = st.turn === ME && !UI.busy && !st.over;
+  const myTurn = st.turn === ME && !UI.busy && !st.over && !st.waitBurn;
   // scores
   $('#scores').innerHTML = st.players.map(x => `<div class="plaque ${st.turn === x.idx && !st.over ? 'active' : ''}">
     <span class="swatch" style="background:var(--p-${x.color})"></span>
@@ -1119,7 +1150,7 @@ document.addEventListener('pointercancel', e => endDrag(e, true));
 document.addEventListener('click', e => { if (drag.justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
 
 // ---------- events ----------
-$('#board').addEventListener('click', e => { const s = e.target.closest('.sq'); if (!s || UI.st.turn !== ME || UI.busy || UI.st.over) return; placeAt(+s.dataset.r, +s.dataset.c); });
+$('#board').addEventListener('click', e => { const s = e.target.closest('.sq'); if (!s || UI.st.turn !== ME || UI.busy || UI.st.over || UI.st.waitBurn) return; placeAt(+s.dataset.r, +s.dataset.c); });
 function rackClick(e) { const b = e.target.closest('.rtile'); if (!b || b.disabled) return; const id = +b.dataset.id; UI.sel = UI.sel === id ? null : id; render(); }
 $('#rack').addEventListener('click', rackClick);
 $('#hand').addEventListener('click', e => { const b = e.target.closest('button[data-card]'); if (b && !b.disabled) playHandCard(b.dataset.card); });
@@ -1148,7 +1179,7 @@ function resetToHome() {
   if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; }
   try { localStorage.removeItem('aa-online'); } catch (e) {}
   UI.st = null; UI.agents = null; UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null;
-  UI.busy = false; UI.passArm = false; UI.rackOrder = []; UI.online = false; UI.gameId = null; UI.connState = null;
+  UI.busy = false; UI.burning = false; UI.passArm = false; UI.rackOrder = []; UI.online = false; UI.gameId = null; UI.connState = null;
   ME = HU; statusOverride = null;
   ['hand', 'goals', 'info'].forEach(n => { try { closeFlyout(n); } catch (e) {} });
   $('#game').hidden = true;
