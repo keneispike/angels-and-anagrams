@@ -668,11 +668,13 @@ function requestState(gameId, triesLeft) {
 }
 function publishState() {
   if (!UI.online || !UI.st) return;
+  // Ordering is by turn counter (_seq), which only goes up when a turn finishes (see finishHumanTurn).
+  // Re-sending the same state (reconnect, join request) keeps the same _seq, so it can never
+  // overwrite a newer move the way a wall-clock stamp could.
+  if (UI.st._seq == null) UI.st._seq = 0;
   const trimmed = JSON.parse(JSON.stringify(UI.st));
   delete trimmed.rng;
   trimmed.log = trimmed.log.slice(-30);
-  trimmed._rev = Date.now();
-  UI.st._rev = trimmed._rev;
   saveOnlineState();
   // mqtt.js queues publishes made before the connection finishes and sends
   // them once it's up, so this doesn't need to wait for a connected client.
@@ -682,7 +684,15 @@ function applyIncoming(payload) {
   if (payload && payload.end && payload.g === UI.gameId) { if (payload.by !== ME) handleRemoteExit(); return; }
   if (!payload || !payload.s || payload.g !== UI.gameId) return;
   const incoming = payload.s;
-  if (UI.st && UI.st._rev != null && incoming._rev != null && incoming._rev <= UI.st._rev) return; // our own echo or a stale message
+  if (UI.st) {
+    const mine = UI.st._seq == null ? 0 : UI.st._seq, theirs = incoming._seq == null ? -1 : incoming._seq;
+    if (theirs <= mine) {
+      // our own echo, a duplicate, or the other device is behind: ignore it, and if they are
+      // behind, send our newer state so they catch up instead of overwriting us.
+      if (theirs < mine) publishState();
+      return;
+    }
+  }
   clearTimeout(joinRetryTimer);
   incoming.rng = freshRng();
   UI.st = incoming;
@@ -846,7 +856,7 @@ async function playWord() {
 function finishHumanTurn() {
   const over = AA.endTurn(UI.st);
   syncRack();
-  if (UI.online) { publishState(); if (over || UI.st.over) return endGame(); return render(); }
+  if (UI.online) { UI.st._seq = (UI.st._seq || 0) + 1; publishState(); if (over || UI.st.over) return endGame(); return render(); }
   if (over || UI.st.over) return endGame();
   aiTurn();
 }
