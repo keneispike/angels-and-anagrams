@@ -200,6 +200,7 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
 #aShuffle{background:var(--nice-soft);border-color:var(--nice);color:var(--nice)}
 #aExch{background:var(--gold-soft);border-color:var(--gold);color:var(--ink)}
 #aPass{background:var(--evil-soft);border-color:var(--evil);color:var(--evil)}
+#aExit{background:var(--surface);border-color:var(--muted);color:var(--muted)}
 
 /* side */
 .side{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -388,7 +389,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const HU = 0, AI = 1;
 let ME = HU;
 const COLORS = ['red','black','white','gold'];
-const UI = { st:null, agents:null, sel:null, pending:[], mode:null, anointId:null, busy:false, rackOrder:[], passArm:false, aiLevel:'family', youColor:'red', online:false, gameId:null };
+const UI = { gen:0, ending:false, st:null, agents:null, sel:null, pending:[], mode:null, anointId:null, busy:false, rackOrder:[], passArm:false, aiLevel:'family', youColor:'red', online:false, gameId:null };
 
 // ---------- splash ----------
 (() => {
@@ -578,13 +579,17 @@ function startHumanTurn() {
   render();
 }
 async function aiTurn() {
+  const gen = UI.gen;
   UI.busy = true; render();
   await sleep(450);
+  if (gen !== UI.gen || !UI.st) return; // game was exited
   const st = UI.st;
   AA.beginTurn(st);
   render();
   await sleep(60);
+  if (gen !== UI.gen) return;
   const over = await AA.aiTurn(st, UI.agents, AI);
+  if (gen !== UI.gen) return;
   UI.busy = false;
   syncRack();
   if (over || st.over) return endGame();
@@ -614,12 +619,16 @@ function relayTopic(gameId) { return 'angelsanagrams/v1/' + gameId; }
 function reqTopic(gameId) { return 'angelsanagrams/v1/' + gameId + '/req'; }
 let mqttClient = null;
 let joinRetryTimer = null;
-function setConn(state) {
-  UI.connState = state;
+function setConn(state) { UI.connState = state; paintConn(); }
+// Also called from render(), so the "whose turn" part stays current.
+function paintConn() {
+  const state = UI.connState;
   const el = $('#connBadge'); if (!el) return;
-  if (!UI.online) { el.hidden = true; return; }
+  if (!UI.online || !state) { el.hidden = true; return; }
   el.hidden = false;
-  const label = { live: '● Live — moves sync automatically', connecting: '○ Connecting…', reconnecting: '○ Reconnecting…', offline: '○ Offline — will catch up when reconnected' }[state] || '';
+  const st = UI.st;
+  const live = !st ? '● Live' : st.over ? '● Live — game over' : `● Live — ${(st.players[st.turn] || {}).name || 'Player'}’s turn`;
+  const label = { live, connecting: '○ Connecting…', reconnecting: '○ Reconnecting…', offline: '○ Offline — will catch up when reconnected' }[state] || '';
   el.textContent = label;
   el.style.color = state === 'live' ? 'var(--nice, #2a8)' : 'var(--muted)';
 }
@@ -670,6 +679,7 @@ function publishState() {
   if (mqttClient) mqttClient.publish(relayTopic(UI.gameId), JSON.stringify({ g: UI.gameId, s: trimmed }), { qos: 1, retain: true });
 }
 function applyIncoming(payload) {
+  if (payload && payload.end && payload.g === UI.gameId) { if (payload.by !== ME) handleRemoteExit(); return; }
   if (!payload || !payload.s || payload.g !== UI.gameId) return;
   const incoming = payload.s;
   if (UI.st && UI.st._rev != null && incoming._rev != null && incoming._rev <= UI.st._rev) return; // our own echo or a stale message
@@ -902,6 +912,7 @@ function renderStatus() {
 // ---------- render ----------
 function render() {
   const st = UI.st; if (!st) return;
+  paintConn();
   const p = st.players[ME], opp = st.players[1 - ME], cur = st.cur || {};
   const myTurn = st.turn === ME && !UI.busy && !st.over;
   // scores
@@ -950,6 +961,7 @@ function render() {
   if (cur.anoint && myTurn) acts.push(`<button class="btn goldb" id="aAnoint" ${!UI.pending.length ? 'disabled' : ''} aria-pressed="${UI.mode === 'anoint'}">${UI.mode === 'anoint' ? 'Tap a placed tile…' : 'Pick Anointed tile'}</button>`);
   acts.push(`<button class="btn" id="aExch" ${!myTurn || UI.pending.length || st.bag.length < 7 ? 'disabled' : ''}>Exch</button>`);
   acts.push(`<button class="btn" id="aPass" ${!myTurn || UI.pending.length ? 'disabled' : ''}>${UI.passArm ? 'Sure?' : 'Pass'}</button>`);
+  if (!st.over) acts.push(`<button class="btn" id="aExit">Exit Game</button>`);
   if (st.over) acts.push(`<button class="btn goldb" id="aNew">New game</button>`);
   $('#actions').innerHTML = acts.join('');
   // hand
@@ -1112,9 +1124,61 @@ $('#actions').addEventListener('click', e => {
     case 'aAnoint': UI.mode = UI.mode === 'anoint' ? null : 'anoint'; return render();
     case 'aExch': return doExchange();
     case 'aPass': if (!UI.passArm) { UI.passArm = true; return render(); } UI.passArm = false; AA.passTurn(UI.st, ME); return finishHumanTurn();
+    case 'aExit': return exitGame();
     case 'aNew': return startScreen();
   }
 });
+
+// ---------- exit game ----------
+// Back to the home screen with everything reset. Bumping UI.gen stops any
+// in-flight async work (like Claude's turn) from touching the cleared game.
+function resetToHome() {
+  UI.gen++;
+  clearTimeout(joinRetryTimer);
+  if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; }
+  try { localStorage.removeItem('aa-online'); } catch (e) {}
+  UI.st = null; UI.agents = null; UI.pending = []; UI.sel = null; UI.mode = null; UI.anointId = null;
+  UI.busy = false; UI.passArm = false; UI.rackOrder = []; UI.online = false; UI.gameId = null; UI.connState = null;
+  ME = HU; statusOverride = null;
+  ['hand', 'goals', 'info'].forEach(n => { try { closeFlyout(n); } catch (e) {} });
+  $('#game').hidden = true;
+  const cb = $('#connBadge'); if (cb) cb.hidden = true;
+  $('#modalRoot').innerHTML = '';
+  startScreen();
+}
+async function exitGame() {
+  const online = UI.online;
+  const yes = await modal(`<h3>Exit game?</h3><p>${online ? 'This ends the game for both players.' : 'Your current game will be lost.'} You'll go back to the home screen.</p>
+    <div class="actions"><button class="btn primary" id="exYes">Yes, exit</button><button class="btn" id="exNo">No, keep playing</button></div>`, (m, done) => {
+    m.querySelector('#exYes').addEventListener('click', () => done(true));
+    m.querySelector('#exNo').addEventListener('click', () => done(false));
+  });
+  if (!yes) return;
+  if (online && mqttClient && UI.gameId) {
+    const client = mqttClient, gid = UI.gameId;
+    // tell the other player, and give the message a moment to go out before we disconnect
+    await new Promise(res => {
+      let fin = false; const f = () => { if (!fin) { fin = true; res(); } };
+      setTimeout(f, 2000);
+      try { client.publish(relayTopic(gid), JSON.stringify({ g: gid, end: true, by: ME, _rev: Date.now() }), { qos: 1, retain: true }, f); } catch (e) { f(); }
+    });
+  }
+  resetToHome();
+}
+async function handleRemoteExit() {
+  if (UI.ending) return;
+  UI.ending = true;
+  UI.gen++; UI.online = false;
+  clearTimeout(joinRetryTimer);
+  try { localStorage.removeItem('aa-online'); } catch (e) {}
+  if (mqttClient) { try { mqttClient.end(true); } catch (e) {} mqttClient = null; }
+  await modal(`<h3>Game ended by other player</h3><p>The other player left the game. You'll go back to the home screen now.</p>
+    <div class="actions"><button class="btn primary" id="exOk">OK</button></div>`, (m, done) => {
+    m.querySelector('#exOk').addEventListener('click', () => done());
+  });
+  UI.ending = false;
+  resetToHome();
+}
 
 // ---------- end ----------
 function endGame() {
