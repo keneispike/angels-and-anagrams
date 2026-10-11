@@ -298,6 +298,7 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
         <button role="tab" id="tab-howto" aria-selected="false" data-tab="howto">How to play</button>
         <button role="tab" id="tab-report" aria-selected="false" data-tab="report">Playtest report</button>
         <button role="tab" id="tab-ref" aria-selected="false" data-tab="ref">Cards &amp; goals</button>
+        <button role="tab" id="tab-notes" aria-selected="false" data-tab="notes">Release notes</button>
       </nav>
     </div>
   </header>
@@ -347,6 +348,7 @@ nav.tabs.menu button{width:100%;text-align:left;border-radius:6px;padding:8px 12
   <section id="view-howto" hidden><div class="doc" id="howto"></div></section>
   <section id="view-report" hidden><div class="doc" id="report"></div></section>
   <section id="view-ref" hidden><div class="doc" id="ref"></div></section>
+  <section id="view-notes" hidden><div class="doc" id="notes"></div></section>
 </div>
 <div id="modalRoot"></div>
 
@@ -410,7 +412,7 @@ menuBtn.addEventListener('click', () => {
 document.addEventListener('click', e => { if (!tabMenu.hidden && !e.target.closest('.menuWrap')) closeMenu(); });
 document.querySelectorAll('nav.tabs button[data-tab]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('nav.tabs button[data-tab]').forEach(x => x.setAttribute('aria-selected', x === b));
-  for (const t of ['play','howto','report','ref']) $('#view-' + t).hidden = t !== b.dataset.tab;
+  for (const t of ['play','howto','report','ref','notes']) $('#view-' + t).hidden = t !== b.dataset.tab;
   try { localStorage.setItem('aa-tab', b.dataset.tab); } catch (e) {}
   closeMenu();
 }));
@@ -1301,8 +1303,24 @@ function renderRef() {
   <h3>Allowed lists</h3><p><b>Creature Comforts:</b> ${[...AA.CREATURES].join(', ')}, plus plurals.</p><p><b>Counting Sheep:</b> ${[...AA.NUMBERS].join(', ')}. PAIR is off unless you agree at setup.</p>`;
 }
 
+// ---------- release notes tab ----------
+// Add each new release at the TOP of this list (newest first). Keep each one short and non-technical.
+const RELEASES = [
+  { v: '2.3.5', date: 'Oct 11, 2026', notes: ['Added this Release notes page to the Help menu.'] },
+  { v: '2.3.4', date: 'Oct 11, 2026', notes: ['Two-device games now start the same way as games against Claude: each player picks 7 of 14 starting tiles. Play begins once both have chosen.'] },
+  { v: '2.3.3', date: 'Oct 11, 2026', notes: ['One word list for everyone, and EW and OK are now accepted.', 'Claude’s levels now differ only in how sharply it plays, not in which words it knows. Expect higher Claude scores at Casual and Family.'] },
+  { v: '2.3.2', date: 'Oct 11, 2026', notes: ['New Exit Game button next to Pass. It asks first, then sends you home. Your friend sees “Game ended by other player” before going home too.', 'The status now reads “Live — Player X’s turn”.', 'Fixed words disappearing from the board in two-device games.'] },
+  { v: '2.3.1', date: 'Oct 11, 2026', notes: ['New Send feedback button in the header. No email app needed.'] },
+  { v: '2.3.0', date: 'Oct 10, 2026', notes: ['First v2.3 playtest build on this site, with a Beta label in the header, a centered tile row, larger Hand and Goals card backs, and the game opening on the Play screen.'] },
+];
+function renderNotes() {
+  $('#notes').innerHTML = `<h2>Release notes</h2><p>Current release: <b>${esc(RELEASES[0].v)}</b></p>` +
+    RELEASES.map(r => `<h3>Release ${esc(r.v)} · ${esc(r.date)}</h3><ul>${r.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>`).join('');
+}
+
 renderHowto();
 renderRef();
+renderNotes();
 if (window.AA_REPORT) $('#report').innerHTML = window.AA_REPORT;
 boot();
 })();
