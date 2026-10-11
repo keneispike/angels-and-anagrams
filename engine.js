@@ -162,8 +162,6 @@
     Object.assign(D, { L, FC, NS, T, n, ready: true, count: good.length });
     return good.length;
   }
-  const COMMON = new Set();
-  function loadCommon(text) { for (const w of text.split(/\r?\n/)) if (w) COMMON.add(w.trim().toUpperCase()); return COMMON.size; }
   function child(node, c) {
     for (let k = D.FC[node]; k; k = D.NS[k]) { const l = D.L[k]; if (l === c) return k; if (l > c) return 0; }
     return 0;
@@ -881,12 +879,11 @@
     const maxPlace = Math.min(7, physical, flags.maxPlace || 7);
     const key = [st.turnNo, !!flags.noColors, !!flags.halo, !!flags.plain, p.rack.map(t => t.id).join('.'), p.supply.length].join('|');
     st._gc = st._gc || {};
-    const family = (p.level === 'family' || p.level === 'casual') && COMMON.size;
+    const family = p.level === 'family' || p.level === 'casual';
     let quick = st._gc[key];
     if (!quick) {
       const gens = genMoves(st.board, cnt, Math.min(blanks + (flags.halo ? 1 : 0), p.level === 'expert' ? 2 : 1), maxPlace);
       quick = gens.map(g => { const r = scoreMove(st.board, g.map(x => ({ ...x, val: x.blank ? 0 : VALUES[x.letter] })), { plain: flags.plain }); return { g, s: r.score, ws: r.words }; });
-      if (family) quick = quick.filter(q => q.ws.every(w => COMMON.has(w.w)));
       if (Object.keys(st._gc).length > 6) st._gc = {};
       st._gc[key] = quick;
     }
@@ -1017,7 +1014,7 @@
 
   G.AA = {
     VALUES, DIST, N, CENTER, PREM, CARDS, CARD, GOALS, GOAL, CREATURES, NUMBERS, COLORED_LETTERS,
-    loadDict, loadCommon, isWord, COMMON, newGame, dealRacks, beginTurn, playCard, commitMove, exchange, passTurn, endTurn,
+    loadDict, isWord, newGame, dealRacks, beginTurn, playCard, commitMove, exchange, passTurn, endTurn,
     validate, scoreMove, cardBlockedReason, goalScore, goalProgress, bestMove, aiTurn, aiAgent, total, tileVal,
     leaveScore, boardWords, burnB, dict: D, PUBLIC, publicStanding, RHYME_LABEL,
   };

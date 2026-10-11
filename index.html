@@ -514,8 +514,8 @@ const remoteAutoAgent = {
 // ---------- start ----------
 async function boot() {
   try {
-    const [w, c] = await Promise.all([fetch('words.txt').then(r => r.text()), fetch('common.txt').then(r => r.text())]);
-    AA.loadDict(w); AA.loadCommon(c);
+    const w = await fetch('words.txt').then(r => r.text());
+    AA.loadDict(w);
   } catch (e) { $('#loading').textContent = 'The word list did not load. Refresh the page to try again.'; return; }
   $('#loading').hidden = true;
   if (await tryResumeOnline()) return;
@@ -532,9 +532,9 @@ function startScreen() {
       <button class="btn small" data-v="friend" aria-pressed="false">Vs a friend (2 devices)</button></div></div>
     <div><b>Your angel color</b><div class="opt" id="col" style="margin-top:6px">${COLORS.map(c => `<button class="btn small" data-c="${c}" aria-pressed="${c === color}">${c[0].toUpperCase() + c.slice(1)}</button>`).join('')}</div></div>
     <div id="lvlWrap"><b>How Claude plays</b><div class="opt" id="lvl" style="margin-top:6px">
-      <button class="btn small" data-l="casual" aria-pressed="${level === 'casual'}">Casual: everyday words, loose play</button>
-      <button class="btn small" data-l="family" aria-pressed="${level === 'family'}">Family: everyday words, sharp play</button>
-      <button class="btn small" data-l="expert" aria-pressed="${level === 'expert'}">Expert: any word in the list</button></div></div>
+      <button class="btn small" data-l="casual" aria-pressed="${level === 'casual'}">Casual: loose play</button>
+      <button class="btn small" data-l="family" aria-pressed="${level === 'family'}">Family: sharp play</button>
+      <button class="btn small" data-l="expert" aria-pressed="${level === 'expert'}">Expert: sharpest play</button></div></div>
     <p id="friendNote" hidden style="font-size:13px;color:var(--muted)">You'll get an invite link to send your friend once, at the start. After that, moves sync automatically — no need to send anything else. (Uses a free public relay, so it's best-effort; if it ever drops, reopening the app reconnects you. This mode also skips the 14-tile "bag burn" and just deals 7 tiles each, to keep setup simple.)</p>
     <div id="joinWrap" hidden style="font-size:13px;color:var(--muted);margin-top:6px">Already have a code from a friend? <a href="#" id="joinLink">Enter it here</a> instead of starting a new game.</div>
     <div class="actions"><button class="btn primary" id="go">Deal the tiles</button></div>`, (m, done) => {

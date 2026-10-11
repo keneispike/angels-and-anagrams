@@ -79679,6 +79679,7 @@ evulsion
 evulsions
 evzone
 evzones
+ew
 ewe
 ewer
 ewers
@@ -156873,6 +156874,7 @@ oiticica
 oiticicas
 ojime
 ojimes
+ok
 oka
 okapi
 okapis
